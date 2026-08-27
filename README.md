@@ -6,7 +6,7 @@ sin backend propio. Corre directamente en el navegador: `support.js` carga
 React, ReactDOM y Babel desde CDN en tiempo de ejecución y compila la lógica
 y el frame de `index.html` / `ios-frame.jsx` al vuelo.
 
-## Ver en local
+## Ver en local 
 
 No hace falta ningún paso de build. Basta con servir la carpeta con cualquier
 servidor estático, por ejemplo:
