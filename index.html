@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GymRat — Tu app de fitness</title>
+<meta name="description" content="GymRat: registra tus entrenamientos, sigue tu racha y compite con tus amigos.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
 <script src="./support.js"></script>
+<script src="./firebase-config.js"></script>
+<script type="module" src="./firebase.js"></script>
 </head>
 <body>
 <x-dc>
@@ -12,7 +19,14 @@
   <script src="_ds/nocturne-5bebcd30-0a44-4e8f-a2b1-9ab8b4b85aa7/_ds_bundle.js"></script>
   <style>body{margin:0}</style>
 </helmet>
-<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--color-neutral-900);padding:40px;font-family:var(--font-body)">
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;background:var(--color-neutral-900);padding:40px;font-family:var(--font-body)">
+<div style="display:flex;align-items:center;gap:14px">
+  <img src="assets/logo.png" alt="GymRat" style="width:52px;height:auto;display:block">
+  <div style="display:flex;flex-direction:column;line-height:1.2">
+    <span style="font-family:var(--font-heading);font-weight:600;font-size:22px;color:var(--color-text)">GymRat</span>
+    <span style="font-size:12px;color:var(--color-neutral-400)">Tu app de fitness</span>
+  </div>
+</div>
 <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{true}}" width="{{390}}" height="{{844}}" hint-size="390,844">
 <div style="height:100%;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);position:relative;overflow:hidden">
   <div style="flex:1;overflow-y:auto;padding-top:54px">
@@ -20,9 +34,12 @@
     <sc-if value="{{showHome}}" hint-placeholder-val="{{true}}">
       <div style="display:flex;flex-direction:column;gap:20px;padding:4px 20px 24px">
         <div style="display:flex;align-items:center;justify-content:space-between">
-          <div>
-            <div style="font-size:13px;color:var(--color-neutral-400)">viernes, 21 de agosto</div>
-            <h1 style="font-size:26px;margin:2px 0 0">Buenas tardes</h1>
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="assets/logo.png" alt="" style="width:34px;height:34px;object-fit:contain;border-radius:8px">
+            <div>
+              <div style="font-size:13px;color:var(--color-neutral-400)">viernes, 21 de agosto</div>
+              <h1 style="font-size:26px;margin:2px 0 0">Buenas tardes</h1>
+            </div>
           </div>
           <div style="display:flex;align-items:center;gap:5px;background:var(--color-accent-900);color:var(--color-accent-200);padding:7px 12px;border-radius:var(--radius-lg);font-family:var(--font-heading);font-weight:600;font-size:15px">
             <span style="width:16px;height:16px;color:var(--color-accent);display:flex">{{icons.flame}}</span>{{streak}}
@@ -556,6 +573,39 @@ class Component extends DCLogic {
     { id: 3, text: 'David va 2 entrenamientos por detrás esta semana', time: 'hace 1d' },
     { id: 4, text: 'Alex inició una racha de 12 días', time: 'hace 1d' },
   ];
+
+  componentDidMount() {
+    (window.GymDBReady || Promise.resolve(null)).then((db) => {
+      this._db = db;
+      if (!db) return;
+      return db.loadState().then((saved) => {
+        if (saved) {
+          this._loading = true;
+          this.setState(saved);
+          this._loading = false;
+        }
+      });
+    }).catch((err) => console.error('[GymRat] No se pudieron cargar los datos guardados:', err));
+  }
+
+  // Persiste en Firestore tras cada cambio de estado (ver firebase.js).
+  // Sin Firebase configurado, this._db nunca se rellena y la app sigue
+  // funcionando igual que antes, solo en memoria.
+  setState(update, cb) {
+    super.setState(update, cb);
+    if (!this._loading && this._db) this._db.saveState(this._persistedSlice());
+  }
+
+  _persistedSlice() {
+    const s = this.state;
+    return {
+      tab: s.tab, session: s.session,
+      units: s.units, friendMetric: s.friendMetric, weeklyGoal: s.weeklyGoal, notif: s.notif,
+      todayLogged: s.todayLogged, streak: s.streak, weekWorkouts: s.weekWorkouts,
+      totalWorkoutsAllTime: s.totalWorkoutsAllTime, longestStreak: s.longestStreak,
+      gymDays: s.gymDays, prDay: s.prDay, prs: s.prs, achievements: s.achievements, history: s.history,
+    };
+  }
 
   push(screen, params) { this.setState(s => ({ stack: [...s.stack, { screen, ...params }] })); }
   pop() { this.setState(s => ({ stack: s.stack.slice(0, -1) })); }
