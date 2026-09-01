@@ -3,6 +3,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   onSnapshot,
   collection,
   addDoc,
@@ -125,6 +126,28 @@ export async function addFriend(myUid, friendUid) {
   await setDoc(doc(db, "users", myUid, "friends", friendUid), { addedAt: serverTimestamp() });
   await setDoc(doc(db, "users", friendUid, "friends", myUid), { addedAt: serverTimestamp() });
   return friendSnap.data();
+}
+
+// Envía tu rutina a un amigo: le deja una copia en su propia bandeja
+// (`incomingRoutines`), que solo él puede leer o borrar. Las reglas de
+// Firestore exigen que quien envía figure ya como su amigo.
+export async function shareRoutine(fromUser, toUid, routine) {
+  await addDoc(collection(db, "users", toUid, "incomingRoutines"), {
+    fromUid: fromUser.uid,
+    fromName: fromUser.displayName || "Un amigo",
+    fromPhotoURL: fromUser.photoURL || null,
+    routine,
+    sentAt: serverTimestamp(),
+  });
+}
+
+export async function listIncomingRoutines(uid) {
+  const snaps = await getDocs(collection(db, "users", uid, "incomingRoutines"));
+  return snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function deleteIncomingRoutine(uid, id) {
+  await deleteDoc(doc(db, "users", uid, "incomingRoutines", id));
 }
 
 export async function listFriendProfiles(uid) {

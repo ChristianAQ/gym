@@ -7,6 +7,7 @@ import { logWorkout } from "../lib/firestore";
 import { dateKey } from "../lib/date";
 import { COMMON_EXERCISES, MUSCLE_GROUPS } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
+import MuscleIcon from "../components/MuscleIcon";
 
 const CUSTOM = "__custom__";
 
@@ -134,6 +135,9 @@ export default function LogWorkout() {
               className="card p-4"
             >
               <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-blaze-500/15 flex items-center justify-center shrink-0">
+                  <MuscleIcon exercise={row.name} className="w-4 h-4 text-blaze-500" />
+                </div>
                 <div className="relative flex-1">
                   <select
                     value={row.custom ? CUSTOM : row.name}

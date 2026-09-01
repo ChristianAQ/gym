@@ -7,6 +7,7 @@ import { updateAuthProfile } from "../firebase";
 import { MUSCLE_GROUPS } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
+import MuscleIcon from "../components/MuscleIcon";
 
 // Agrupa los PRs por músculo (mismo catálogo que la rutina y el registro),
 // y deja aparte los que no encajen en ningún grupo (ejercicios
@@ -155,7 +156,8 @@ export default function Profile() {
           <div className="space-y-4">
             {prGroups.map((group) => (
               <div key={group.name}>
-                <p className="text-blaze-500 text-[11px] font-heading uppercase tracking-wide mb-1.5">
+                <p className="text-blaze-500 text-[11px] font-heading uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                  <MuscleIcon muscle={group.name} className="w-3.5 h-3.5" />
                   {group.name}
                 </p>
                 <div className="space-y-2">

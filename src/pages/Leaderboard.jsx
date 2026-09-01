@@ -17,6 +17,7 @@ import { listFriendProfiles } from "../lib/firestore";
 import { KEY_EXERCISES, MUSCLE_GROUPS } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
+import MuscleIcon from "../components/MuscleIcon";
 
 const RANK_STYLES = [
   "bg-blaze-gradient text-white shadow-blaze",
@@ -140,10 +141,14 @@ export default function Leaderboard() {
 
       {tab === "records" && (
         <div className="relative mb-4">
+          <MuscleIcon
+            exercise={exercise}
+            className="w-4 h-4 text-blaze-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+          />
           <select
             value={exercise}
             onChange={(e) => setExercise(e.target.value)}
-            className="input-field w-full appearance-none pr-10"
+            className="input-field w-full appearance-none pl-10 pr-10"
           >
             <optgroup label="Ejercicios clave">
               {KEY_EXERCISES.map((ex) => (
@@ -238,6 +243,7 @@ function CompareModal({ me, rival, onClose }) {
     { label: "Volumen total", meVal: me.totalVolume ?? 0, rivalVal: rival.totalVolume ?? 0, suffix: "kg" },
     ...KEY_EXERCISES.map((ex) => ({
       label: ex,
+      exercise: ex,
       meVal: me.prs?.[ex]?.weight ?? 0,
       rivalVal: rival.prs?.[ex]?.weight ?? 0,
       suffix: "kg",
@@ -285,7 +291,10 @@ function CompareModal({ me, rival, onClose }) {
         <div className="space-y-3">
           {rows.map((row) => (
             <div key={row.label}>
-              <p className="text-center text-[11px] text-ink-500 uppercase tracking-wide mb-1">{row.label}</p>
+              <p className="text-center text-[11px] text-ink-500 uppercase tracking-wide mb-1 flex items-center justify-center gap-1">
+                {row.exercise && <MuscleIcon exercise={row.exercise} className="w-3 h-3" />}
+                {row.label}
+              </p>
               <div className="flex items-center gap-3">
                 <span
                   className={`flex-1 text-right font-heading text-lg font-semibold ${
