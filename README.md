@@ -1,70 +1,84 @@
 # GymRat
 
-Prototipo de app de gimnasio (registro de entrenamientos, racha, calendario,
-récords y tabla de amigos) construido como una página estática — sin build,
-sin backend propio. Corre directamente en el navegador: `support.js` carga
-React, ReactDOM y Babel desde CDN en tiempo de ejecución y compila la lógica
-y el frame de `index.html` / `ios-frame.jsx` al vuelo.
+PWA de gimnasio mobile-first: registra tus entrenamientos, mantén la racha de
+días consecutivos, guarda tus récords personales (PRs) y compite con tus
+amigos en un ranking.
 
-## Ver en local 
+- **Frontend:** React + Vite, Tailwind CSS, Framer Motion (transiciones entre
+  pantallas, calendario animado, micro-interacciones).
+- **Backend:** Firebase (Auth + Firestore), plan gratuito **Spark** — sin
+  servidor propio.
+- **Despliegue:** GitHub Pages, mediante GitHub Actions
+  (`.github/workflows/pages.yml`), que compila con Vite y publica `dist/`.
+- **Enrutado:** `HashRouter` de React Router, para que las rutas funcionen en
+  GitHub Pages sin configuración de servidor adicional.
 
-No hace falta ningún paso de build. Basta con servir la carpeta con cualquier
-servidor estático, por ejemplo:
+## Desarrollo local
 
 ```sh
-python3 -m http.server 8080
+npm install
+npm run dev
 ```
 
-y abrir `http://localhost:8080/`.
+Abre la URL que imprime Vite (por defecto `http://localhost:5173/gym/`, con
+el mismo prefijo `/gym/` que usará en producción).
+
+```sh
+npm run build    # genera dist/
+npm run preview  # sirve dist/ para probarlo como en producción
+```
+
+## Firebase
+
+El proyecto ya usa unas credenciales de ejemplo en `src/firebase.js`, del
+proyecto `gymrat-b52da`. Las claves de una app web de Firebase no son
+secretas (están pensadas para ir en el cliente); la seguridad la dan las
+reglas de Firestore (`firestore.rules`). Si quieres usar tu propio proyecto,
+sustituye el objeto `firebaseConfig` por el de tu consola.
+
+Pasos necesarios en la [consola de Firebase](https://console.firebase.google.com)
+para que el login funcione:
+
+1. **Authentication → Sign-in method**: activa los proveedores **Google** y
+   **Correo electrónico/contraseña**.
+2. **Authentication → Settings → Authorized domains**: añade el dominio de
+   GitHub Pages (`<tu-usuario>.github.io`) para que el popup de Google
+   funcione ahí (`localhost` ya viene añadido por defecto para desarrollo).
+3. **Firestore Database**: crea la base de datos (modo producción) y publica
+   las reglas de `firestore.rules` (Firestore → Reglas → pegar → Publicar).
+
+### Modelo de datos
+
+```
+/users/{uid}
+  displayName, photoURL, email
+  currentStreak, bestStreak, lastWorkoutDate
+  workoutDates: ["2026-09-01", ...]   // para pintar el calendario
+  prs: { "Press banca": { weight, reps, date }, ... }
+
+/users/{uid}/workouts/{id}            // detalle de cada entrenamiento
+/users/{uid}/friends/{friendUid}       // amistades (mutuas)
+```
+
+Cualquier usuario autenticado puede **leer** el perfil de cualquier otro
+(necesario para el ranking), pero solo su dueño puede **escribirlo**. Los
+amigos se añaden por **ID de GymRat** (el `uid`, visible y copiable desde el
+perfil): al añadir a alguien se crea la relación en ambos sentidos, así que
+no hace falta que la otra persona confirme la solicitud.
 
 ## Despliegue en GitHub Pages
-
-El repo incluye `.github/workflows/pages.yml`, que publica el contenido tal
-cual en cada push a `master`. Solo falta activarlo una vez:
 
 1. En GitHub, ve a **Settings → Pages**.
 2. En "Build and deployment" → **Source**, elige **GitHub Actions**.
 3. Haz push a `master` (o lanza el workflow manualmente desde la pestaña
-   *Actions*) y la web quedará publicada en
+   *Actions*): compila con Vite y publica en
    `https://<tu-usuario>.github.io/gym/`.
 
-El archivo `.nojekyll` es necesario porque GitHub Pages, si usa Jekyll,
-ignora por defecto las carpetas que empiezan por `_` (como `_ds/`, donde vive
-el sistema de diseño).
+Si cambias el nombre del repositorio, actualiza `base` en `vite.config.js`
+(y `start_url`/`scope` del manifest PWA) para que coincida con la nueva ruta.
 
-## Logo
+## Iconos y logo
 
-`logo.jpg` es el logo original (con fondo a cuadros de una exportación con
-transparencia). Los assets realmente usados por la app están en `assets/`:
-recortes en PNG con fondo transparente (`logo.png` para la cabecera y
-`favicon-*.png` / `apple-touch-icon.png` para el icono del sitio).
-
-## Base de datos: Firebase
-
-El progreso del usuario (historial, racha, récords, logros, ajustes) se
-guarda en **Firestore**, identificando a cada visitante con un inicio de
-sesión anónimo de **Firebase Authentication**. Sin configurar Firebase, la
-app sigue funcionando exactamente igual que antes: todo en memoria, se
-pierde al recargar.
-
-Para activarlo:
-
-1. Crea un proyecto en la [consola de Firebase](https://console.firebase.google.com).
-2. Añade una app web (icono `</>`) y copia el objeto de configuración que te
-   da la consola.
-3. Pégalo en `firebase-config.js`, sustituyendo los valores de ejemplo.
-4. En **Authentication → Sign-in method**, activa el proveedor **Anonymous**.
-5. Crea una base de datos **Firestore** (modo producción) y publica las
-   reglas de `firestore.rules` (Firestore → Reglas → pegar → Publicar).
-6. Haz commit y push de `firebase-config.js` con tus claves reales.
-
-Notas:
-
-- Las claves de un proyecto Firebase web (`apiKey`, etc.) no son secretas —
-  están pensadas para ir en el cliente; la seguridad la dan las reglas de
-  Firestore de arriba, que solo dejan a cada usuario leer/escribir su propio
-  documento.
-- La tabla de amigos sigue usando datos de ejemplo (`friendsData` en
-  `index.html`): construir amigos reales necesitaría cuentas de verdad
-  (no anónimas) y una colección de usuarios pública o compartida, que no
-  está incluida todavía.
+`logo.jpg` es el logo original en alta resolución. Los assets realmente
+usados por la app están en `assets/` y `public/icons/` (recortes PNG con
+fondo transparente, más los iconos 192/512 usados por el manifest PWA).
