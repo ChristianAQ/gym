@@ -206,20 +206,36 @@ function IOSDevice({
   return (
     // data-om-starter: inert presence marker — Claude Design's starter-usage
     // probe reads it; it renders nothing. Keep it on this root element.
-    <div data-om-starter="ios-frame" style={{
+    <div data-om-starter="ios-frame" className="grt-ios-device" style={{
       width, height, borderRadius: 48, overflow: 'hidden',
       position: 'relative', background: dark ? '#000' : '#F2F2F7',
       boxShadow: '0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.12)',
       fontFamily: '-apple-system, system-ui, sans-serif',
       WebkitFontSmoothing: 'antialiased',
     }}>
+      {/* Por debajo de este ancho, un móvil real (no la vista previa de escritorio):
+          el bisel/notch/barra de estado falsos desaparecen y el frame pasa a ocupar
+          toda la pantalla, respetando el safe-area del dispositivo. */}
+      <style>{`
+        .grt-ios-device .grt-ios-scroll { padding-top: 54px; }
+        .grt-ios-device .grt-ios-tabbar { padding: 6px 6px 26px; }
+        @media (max-width: 560px) {
+          .grt-ios-device {
+            width: 100% !important; height: 100dvh !important;
+            border-radius: 0 !important; box-shadow: none !important;
+          }
+          .grt-ios-device .grt-ios-chrome { display: none !important; }
+          .grt-ios-device .grt-ios-scroll { padding-top: max(16px, env(safe-area-inset-top)); }
+          .grt-ios-device .grt-ios-tabbar { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+        }
+      `}</style>
       {/* dynamic island */}
-      <div style={{
+      <div className="grt-ios-chrome" style={{
         position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)',
         width: 126, height: 37, borderRadius: 24, background: '#000', zIndex: 50,
       }} />
       {/* status bar (absolute) */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+      <div className="grt-ios-chrome" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
         <IOSStatusBar dark={dark} />
       </div>
       {/* nav + content */}
@@ -229,7 +245,7 @@ function IOSDevice({
         {keyboard && <IOSKeyboard dark={dark} />}
       </div>
       {/* home indicator — always on top */}
-      <div style={{
+      <div className="grt-ios-chrome" style={{
         position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 60,
         height: 34, display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
         paddingBottom: 8, pointerEvents: 'none',
