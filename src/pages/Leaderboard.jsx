@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RefreshCw, Flame, Trophy, Users, X, Swords, CalendarCheck, BarChart3 } from "lucide-react";
+import { RefreshCw, Flame, Trophy, Users, X, Swords, CalendarCheck, BarChart3, AlertTriangle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { listFriendProfiles } from "../lib/firestore";
 import { KEY_EXERCISES } from "../lib/exercises";
@@ -24,6 +24,7 @@ export default function Leaderboard() {
   const { user, profile } = useAuth();
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [tab, setTab] = useState("racha");
   const [exercise, setExercise] = useState(KEY_EXERCISES[0]);
   const [rival, setRival] = useState(null);
@@ -31,11 +32,17 @@ export default function Leaderboard() {
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const list = await listFriendProfiles(user.uid);
       setFriends(list);
     } catch (err) {
       console.error("[GymRat] No se pudo cargar el ranking:", err);
+      setLoadError(
+        err.code === "permission-denied"
+          ? "Firestore rechazó la petición (permission-denied). Revisa que las reglas de Firestore de firestore.rules estén publicadas en la consola de Firebase."
+          : "No se pudo cargar tu lista de amigos. Comprueba tu conexión e inténtalo de nuevo."
+      );
     } finally {
       setLoading(false);
     }
@@ -136,7 +143,14 @@ export default function Leaderboard() {
         </div>
       )}
 
-      {friends.length === 0 && !loading && (
+      {loadError && (
+        <div className="card p-6 text-center mb-4 border-red-900/50">
+          <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+          <p className="text-red-300 text-sm">{loadError}</p>
+        </div>
+      )}
+
+      {friends.length === 0 && !loading && !loadError && (
         <div className="card p-6 text-center mb-4">
           <Users className="w-8 h-8 text-ink-600 mx-auto mb-2" />
           <p className="text-ink-400 text-sm">

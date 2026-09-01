@@ -38,7 +38,11 @@ export default function Profile() {
       setFriendMsg({ type: "ok", text: `¡${friend.displayName} añadido a tu lista!` });
       setFriendId("");
     } catch (err) {
-      setFriendMsg({ type: "error", text: err.message });
+      const text =
+        err.code === "permission-denied"
+          ? "Firestore rechazó la petición (permission-denied). Publica las reglas de firestore.rules en la consola de Firebase → Firestore → Reglas."
+          : err.message;
+      setFriendMsg({ type: "error", text });
     } finally {
       setBusy(false);
     }
