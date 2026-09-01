@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, signInWithGoogle, registerWithEmail, loginWithEmail, logout } from "../firebase";
+import { auth, signInWithGoogle, registerWithEmail, loginWithEmail, logout as firebaseLogout } from "../firebase";
 import { ensureUserProfile, subscribeToUser } from "../lib/firestore";
 
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +20,11 @@ export function AuthProvider({ children }) {
       } else {
         setUser(null);
         setProfile(null);
+        try {
+          window.location.hash = "#/login";
+        } catch (e) {
+          // ignore in non-browser env
+        }
       }
       setLoading(false);
     });
@@ -28,6 +35,18 @@ export function AuthProvider({ children }) {
     if (!user) return undefined;
     return subscribeToUser(user.uid, setProfile);
   }, [user]);
+
+  async function logout() {
+    try {
+      await firebaseLogout();
+    } finally {
+      try {
+        window.location.hash = "#/login";
+      } catch (e) {
+        // ignore
+      }
+    }
+  }
 
   const value = {
     user,
