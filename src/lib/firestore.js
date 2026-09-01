@@ -33,6 +33,7 @@ export async function ensureUserProfile(user) {
     bestStreak: 0,
     lastWorkoutDate: null,
     workoutDates: [],
+    totalVolume: 0,
     prs: {},
   };
   await setDoc(ref, profile);
@@ -53,21 +54,27 @@ export async function logWorkout(uid, { dateKey, exercises, note }) {
   const { currentStreak, bestStreak, lastWorkoutDate } = computeStreak(profile, dateKey);
 
   const prs = profile.prs || {};
+  let addedVolume = 0;
+
+  const loggedExercises = exercises.map((ex) => {
+    const weight = Number(ex.weight) || 0;
+    const sets = Number(ex.sets) || 0;
+    const reps = Number(ex.reps) || 0;
+    addedVolume += sets * reps * weight;
+    const prevBest = prs[ex.name]?.weight ?? 0;
+    const isPR = weight > 0 && weight > prevBest;
+    return { name: ex.name, sets, reps, weight, isPR };
+  });
+
   const updates = {
     currentStreak,
     bestStreak,
     lastWorkoutDate,
     workoutDates: arrayUnion(dateKey),
+    totalVolume: (profile.totalVolume || 0) + addedVolume,
   };
-
-  const loggedExercises = exercises.map((ex) => {
-    const weight = Number(ex.weight) || 0;
-    const prevBest = prs[ex.name]?.weight ?? 0;
-    const isPR = weight > 0 && weight > prevBest;
-    if (isPR) {
-      updates[`prs.${ex.name}`] = { weight, reps: Number(ex.reps) || 0, date: dateKey };
-    }
-    return { ...ex, weight, isPR };
+  loggedExercises.forEach((ex) => {
+    if (ex.isPR) updates[`prs.${ex.name}`] = { weight: ex.weight, reps: ex.reps, date: dateKey };
   });
 
   await updateDoc(ref, updates);

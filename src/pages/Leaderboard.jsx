@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RefreshCw, Flame, Trophy, Users, X, Swords } from "lucide-react";
+import { RefreshCw, Flame, Trophy, Users, X, Swords, CalendarCheck, BarChart3 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { listFriendProfiles } from "../lib/firestore";
 import { KEY_EXERCISES } from "../lib/exercises";
@@ -11,6 +11,13 @@ const RANK_STYLES = [
   "bg-blaze-gradient text-white shadow-blaze",
   "bg-ink-700 text-ink-100",
   "bg-ink-800 text-ink-200",
+];
+
+const TABS = [
+  { key: "racha", label: "Racha", icon: Flame },
+  { key: "dias", label: "Días", icon: CalendarCheck },
+  { key: "volumen", label: "Volumen", icon: BarChart3 },
+  { key: "records", label: "Récords", icon: Trophy },
 ];
 
 export default function Leaderboard() {
@@ -45,6 +52,8 @@ export default function Leaderboard() {
       photoURL: profile?.photoURL || user?.photoURL,
       currentStreak: profile?.currentStreak ?? 0,
       bestStreak: profile?.bestStreak ?? 0,
+      workoutDates: profile?.workoutDates ?? [],
+      totalVolume: profile?.totalVolume ?? 0,
       prs: profile?.prs ?? {},
     }),
     [user, profile]
@@ -53,14 +62,19 @@ export default function Leaderboard() {
   const people = useMemo(() => [me, ...friends], [me, friends]);
 
   const ranked = useMemo(() => {
-    if (tab === "racha") {
-      return [...people]
-        .map((p) => ({ ...p, value: p.currentStreak ?? 0, suffix: "días" }))
-        .sort((a, b) => b.value - a.value);
+    const rank = (getValue, suffix) =>
+      [...people].map((p) => ({ ...p, value: getValue(p), suffix })).sort((a, b) => b.value - a.value);
+
+    switch (tab) {
+      case "dias":
+        return rank((p) => p.workoutDates?.length ?? 0, "días");
+      case "volumen":
+        return rank((p) => p.totalVolume ?? 0, "kg");
+      case "records":
+        return rank((p) => p.prs?.[exercise]?.weight ?? 0, "kg");
+      default:
+        return rank((p) => p.currentStreak ?? 0, "días");
     }
-    return [...people]
-      .map((p) => ({ ...p, value: p.prs?.[exercise]?.weight ?? 0, suffix: "kg" }))
-      .sort((a, b) => b.value - a.value);
   }, [people, tab, exercise]);
 
   return (
@@ -72,9 +86,38 @@ export default function Leaderboard() {
         </button>
       </div>
 
-      <div className="flex bg-ink-800 rounded-2xl p-1 mb-4">
-        <TabButton active={tab === "racha"} onClick={() => setTab("racha")} icon={Flame} label="Racha" />
-        <TabButton active={tab === "records"} onClick={() => setTab("records")} icon={Trophy} label="Récords" />
+      {friends.length > 0 && (
+        <div className="mb-5">
+          <p className="font-heading uppercase text-xs tracking-wide text-ink-400 mb-2">Tus amigos</p>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+            {friends.map((f) => (
+              <button
+                key={f.uid}
+                onClick={() => setRival(f)}
+                className="flex flex-col items-center gap-1.5 shrink-0 w-16 active:opacity-70"
+              >
+                <Avatar name={f.displayName} photoURL={f.photoURL} size={52} />
+                <span className="text-[11px] text-ink-300 truncate w-full text-center">
+                  {(f.displayName || "?").split(" ")[0]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
+        {TABS.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`shrink-0 px-4 py-2.5 rounded-xl font-heading uppercase text-sm tracking-wide flex items-center gap-1.5 transition-colors ${
+              tab === key ? "bg-blaze-gradient text-white shadow-blaze" : "bg-ink-800 text-ink-400"
+            }`}
+          >
+            <Icon className="w-4 h-4" /> {label}
+          </button>
+        ))}
       </div>
 
       {tab === "records" && (
@@ -128,7 +171,9 @@ export default function Leaderboard() {
                 {!isMe && <p className="text-ink-500 text-xs">Toca para competir</p>}
               </div>
               <div className="text-right shrink-0">
-                <span className="font-heading text-lg font-semibold text-blaze-500">{p.value}</span>
+                <span className="font-heading text-lg font-semibold text-blaze-500">
+                  {p.value.toLocaleString("es-ES")}
+                </span>
                 <span className="text-ink-500 text-xs ml-1">{p.suffix}</span>
               </div>
             </motion.button>
@@ -147,6 +192,13 @@ function CompareModal({ me, rival, onClose }) {
   const rows = [
     { label: "Racha actual", meVal: me.currentStreak ?? 0, rivalVal: rival.currentStreak ?? 0, suffix: "días" },
     { label: "Mejor racha", meVal: me.bestStreak ?? 0, rivalVal: rival.bestStreak ?? 0, suffix: "días" },
+    {
+      label: "Entrenamientos",
+      meVal: me.workoutDates?.length ?? 0,
+      rivalVal: rival.workoutDates?.length ?? 0,
+      suffix: "días",
+    },
+    { label: "Volumen total", meVal: me.totalVolume ?? 0, rivalVal: rival.totalVolume ?? 0, suffix: "kg" },
     ...KEY_EXERCISES.map((ex) => ({
       label: ex,
       meVal: me.prs?.[ex]?.weight ?? 0,
@@ -169,7 +221,7 @@ function CompareModal({ me, rival, onClose }) {
         exit={{ y: "100%" }}
         transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-ink-900 border-t border-ink-800 rounded-t-3xl p-6 pb-10"
+        className="w-full max-w-md bg-ink-900 border-t border-ink-800 rounded-t-3xl p-6 pb-10 max-h-[80vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
@@ -203,7 +255,7 @@ function CompareModal({ me, rival, onClose }) {
                     row.meVal > row.rivalVal ? "text-blaze-500" : "text-ink-400"
                   }`}
                 >
-                  {row.meVal} {row.suffix}
+                  {row.meVal.toLocaleString("es-ES")} {row.suffix}
                 </span>
                 <div className="w-1 h-5 bg-ink-800 rounded-full shrink-0" />
                 <span
@@ -211,7 +263,7 @@ function CompareModal({ me, rival, onClose }) {
                     row.rivalVal > row.meVal ? "text-blaze-500" : "text-ink-400"
                   }`}
                 >
-                  {row.rivalVal} {row.suffix}
+                  {row.rivalVal.toLocaleString("es-ES")} {row.suffix}
                 </span>
               </div>
             </div>
@@ -222,15 +274,3 @@ function CompareModal({ me, rival, onClose }) {
   );
 }
 
-function TabButton({ active, onClick, icon: Icon, label }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 py-2.5 rounded-xl font-heading uppercase text-sm tracking-wide flex items-center justify-center gap-1.5 transition-colors ${
-        active ? "bg-blaze-gradient text-white shadow-blaze" : "text-ink-400"
-      }`}
-    >
-      <Icon className="w-4 h-4" /> {label}
-    </button>
-  );
-}

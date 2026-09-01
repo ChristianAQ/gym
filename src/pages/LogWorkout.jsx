@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Trash2, Loader2, PartyPopper } from "lucide-react";
+import { X, Plus, Trash2, Loader2, PartyPopper, ChevronDown } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { logWorkout } from "../lib/firestore";
 import { dateKey } from "../lib/date";
 import { COMMON_EXERCISES } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 
+const CUSTOM = "__custom__";
+
 let rowId = 0;
 function emptyRow() {
   rowId += 1;
-  return { id: rowId, name: "", sets: "3", reps: "10", weight: "" };
+  return { id: rowId, name: "", custom: false, sets: "3", reps: "10", weight: "" };
 }
 
 export default function LogWorkout() {
@@ -95,12 +97,6 @@ export default function LogWorkout() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex-1 px-5 pb-8 overflow-y-auto space-y-3">
-        <datalist id="exercise-options">
-          {COMMON_EXERCISES.map((ex) => (
-            <option key={ex} value={ex} />
-          ))}
-        </datalist>
-
         <AnimatePresence initial={false}>
           {rows.map((row) => (
             <motion.div
@@ -112,13 +108,31 @@ export default function LogWorkout() {
               className="card p-4"
             >
               <div className="flex items-center gap-2 mb-3">
-                <input
-                  list="exercise-options"
-                  placeholder="Ejercicio (ej. Press banca)"
-                  value={row.name}
-                  onChange={(e) => updateRow(row.id, "name", e.target.value)}
-                  className="input-field flex-1"
-                />
+                <div className="relative flex-1">
+                  <select
+                    value={row.custom ? CUSTOM : row.name}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === CUSTOM) {
+                        setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, custom: true, name: "" } : r)));
+                      } else {
+                        setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, custom: false, name: v } : r)));
+                      }
+                    }}
+                    className="input-field w-full appearance-none pr-10"
+                  >
+                    <option value="" disabled>
+                      Elige un ejercicio
+                    </option>
+                    {COMMON_EXERCISES.map((ex) => (
+                      <option key={ex} value={ex}>
+                        {ex}
+                      </option>
+                    ))}
+                    <option value={CUSTOM}>Otro ejercicio…</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
                 <button
                   type="button"
                   onClick={() => removeRow(row.id)}
@@ -128,6 +142,16 @@ export default function LogWorkout() {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+
+              {row.custom && (
+                <input
+                  autoFocus
+                  placeholder="Nombre del ejercicio"
+                  value={row.name}
+                  onChange={(e) => updateRow(row.id, "name", e.target.value)}
+                  className="input-field mb-3"
+                />
+              )}
               <div className="grid grid-cols-3 gap-2">
                 <Field label="Series">
                   <input
