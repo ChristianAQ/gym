@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import LogWorkout from "./pages/LogWorkout";
 import Leaderboard from "./pages/Leaderboard";
 import Profile from "./pages/Profile";
+import Routine from "./pages/Routine";
 
 function AppShell({ children, showNav }) {
   return (
@@ -40,6 +41,16 @@ export default function App() {
             <ProtectedRoute>
               <AppShell showNav={false}>
                 <LogWorkout />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/routine"
+          element={
+            <ProtectedRoute>
+              <AppShell showNav>
+                <Routine />
               </AppShell>
             </ProtectedRoute>
           }

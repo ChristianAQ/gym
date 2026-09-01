@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Trash2, Loader2, PartyPopper, ChevronDown } from "lucide-react";
+import { X, Plus, Trash2, Loader2, PartyPopper, ChevronDown, ClipboardList } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { logWorkout } from "../lib/firestore";
 import { dateKey } from "../lib/date";
@@ -11,15 +11,34 @@ import PageTransition from "../components/PageTransition";
 const CUSTOM = "__custom__";
 
 let rowId = 0;
-function emptyRow() {
+function emptyRow(ex) {
   rowId += 1;
-  return { id: rowId, name: "", custom: false, sets: "3", reps: "10", weight: "" };
+  const name = ex?.name || "";
+  return {
+    id: rowId,
+    name,
+    custom: !!name && !COMMON_EXERCISES.includes(name),
+    sets: String(ex?.sets ?? 3),
+    reps: String(ex?.reps ?? 10),
+    weight: "",
+  };
+}
+
+// Si hoy toca algo en la rutina, se rellenan los ejercicios de esa
+// plantilla (nombre, series y reps objetivo) y solo falta el peso — pero
+// sigue siendo una lista normal: se puede añadir, quitar o cambiar
+// cualquier fila sin que eso afecte a la rutina guardada.
+function initialRows(routine) {
+  const today = routine?.[new Date().getDay()];
+  if (today && today.length > 0) return today.map((ex) => emptyRow(ex));
+  return [emptyRow()];
 }
 
 export default function LogWorkout() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const [rows, setRows] = useState([emptyRow()]);
+  const [rows, setRows] = useState(() => initialRows(profile?.routine));
+  const [prefilled] = useState(() => Boolean(profile?.routine?.[new Date().getDay()]?.length));
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -97,6 +116,13 @@ export default function LogWorkout() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex-1 px-5 pb-8 overflow-y-auto space-y-3">
+        {prefilled && (
+          <div className="flex items-start gap-2 bg-blaze-500/10 border border-blaze-500/20 rounded-2xl p-3 text-xs text-blaze-300">
+            <ClipboardList className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>Rellenado desde tu rutina de hoy — añade el peso y cambia lo que necesites.</span>
+          </div>
+        )}
+
         <AnimatePresence initial={false}>
           {rows.map((row) => (
             <motion.div

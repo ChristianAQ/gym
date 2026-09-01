@@ -35,6 +35,7 @@ export async function ensureUserProfile(user) {
     workoutDates: [],
     totalVolume: 0,
     prs: {},
+    routine: {},
   };
   await setDoc(ref, profile);
   return profile;
@@ -105,6 +106,13 @@ export async function getWorkoutsByDate(uid, dateKey) {
 // amigos) y, de forma best-effort, en la cuenta de Firebase Auth.
 export async function updateProfileData(uid, { displayName, photoURL }) {
   await updateDoc(userRef(uid), { displayName, photoURL: photoURL || null });
+}
+
+// La rutina es una plantilla semanal: routine[díaDeLaSemana] (0=domingo ...
+// 6=sábado, igual que Date#getDay()) -> [{ name, sets, reps }]. Se guarda
+// entera de una vez porque es pequeña y se edita como un todo.
+export async function updateRoutine(uid, routine) {
+  await updateDoc(userRef(uid), { routine });
 }
 
 // Amistad mutua: cada lado puede escribir en la subcolección `friends` del

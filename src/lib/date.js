@@ -54,6 +54,7 @@ export { WEEKDAYS_ES };
 const WEEKDAYS_FULL_ES = [
   "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
 ];
+export { WEEKDAYS_FULL_ES };
 
 export function formatFullDate(key) {
   const date = keyToDate(key);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Trophy, Dumbbell, X } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -10,6 +11,7 @@ import Avatar from "../components/Avatar";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState(null);
 
   const streak = profile?.currentStreak ?? 0;
@@ -27,7 +29,9 @@ export default function Dashboard() {
           <p className="text-ink-400 text-sm">Hola,</p>
           <h1 className="font-heading text-2xl font-semibold uppercase tracking-wide">{firstName}</h1>
         </div>
-        <Avatar name={displayName} photoURL={photoURL} size={48} />
+        <button onClick={() => navigate("/profile")} aria-label="Ir a tu perfil" className="active:opacity-70">
+          <Avatar name={displayName} photoURL={photoURL} size={48} />
+        </button>
       </div>
 
       <motion.div
@@ -54,7 +58,7 @@ export default function Dashboard() {
       </motion.div>
 
       <div className="grid grid-cols-2 gap-4 mb-5">
-        <StatCard icon={Trophy} label="Mejor racha" value={best} />
+        <StatCard icon={Trophy} label="Mejor racha" value={best} onClick={() => navigate("/leaderboard")} />
         <StatCard icon={Dumbbell} label="Récords" value={prCount} />
       </div>
 
@@ -164,9 +168,10 @@ function DayDetailModal({ uid, dateKey, logged, onClose }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value }) {
+function StatCard({ icon: Icon, label, value, onClick }) {
+  const Tag = onClick ? "button" : "div";
   return (
-    <div className="card p-4 flex items-center gap-3">
+    <Tag onClick={onClick} className={`card p-4 flex items-center gap-3 text-left ${onClick ? "active:bg-ink-800/60" : ""}`}>
       <div className="w-10 h-10 rounded-xl bg-blaze-500/15 flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-blaze-500" />
       </div>
@@ -174,6 +179,6 @@ function StatCard({ icon: Icon, label, value }) {
         <p className="font-heading text-xl font-semibold leading-none">{value}</p>
         <p className="text-ink-500 text-xs mt-1">{label}</p>
       </div>
-    </div>
+    </Tag>
   );
 }

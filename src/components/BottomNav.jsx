@@ -1,12 +1,15 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, Trophy, User, Plus } from "lucide-react";
+import { Home, Trophy, User, Plus, ClipboardList } from "lucide-react";
 
 const LEFT_TABS = [
   { to: "/", label: "Inicio", icon: Home },
-  { to: "/leaderboard", label: "Ranking", icon: Trophy },
+  { to: "/routine", label: "Rutina", icon: ClipboardList },
 ];
-const RIGHT_TABS = [{ to: "/profile", label: "Perfil", icon: User }];
+const RIGHT_TABS = [
+  { to: "/leaderboard", label: "Ranking", icon: Trophy },
+  { to: "/profile", label: "Perfil", icon: User },
+];
 
 function NavButton({ to, label, icon: Icon, active }) {
   return (
@@ -43,7 +46,7 @@ export default function BottomNav() {
             ))}
           </div>
           <div className="w-16 shrink-0" aria-hidden="true" />
-          <div className="flex-1 grid grid-cols-1">
+          <div className="flex-1 grid grid-cols-2">
             {RIGHT_TABS.map((tab) => (
               <NavButton key={tab.to} {...tab} active={location.pathname === tab.to} />
             ))}
