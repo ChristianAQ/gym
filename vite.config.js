@@ -51,6 +51,14 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,svg,webmanifest}"],
+        // Sin esto, un service worker instalado en un iPhone (PWA en pantalla
+        // de inicio) se queda "esperando" y sigue sirviendo la versión vieja
+        // hasta que se cierra la app del todo — a veces nunca. Con
+        // skipWaiting + clientsClaim, la nueva versión toma el control en
+        // cuanto termina de descargarse.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
