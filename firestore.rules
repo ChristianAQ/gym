@@ -1,11 +1,31 @@
 rules_version = '2';
 
-// Cada usuario (autenticado de forma anónima) solo puede leer y escribir
-// su propio documento en /users/{uid}, donde GymRat guarda su progreso.
+// Modelo de datos de GymRat:
+//   /users/{uid}                     perfil (racha, récords, resumen de días)
+//   /users/{uid}/workouts/{id}        detalle de cada entrenamiento registrado
+//   /users/{uid}/friends/{friendUid}  amistades (marcador, sin datos sensibles)
+//
+// El perfil es legible por cualquier usuario autenticado (así funciona el
+// ranking entre amigos sin necesitar un backend propio), pero solo su dueño
+// puede escribirlo. La subcolección `friends` se puede escribir desde
+// cualquiera de los dos lados de la amistad para que "añadir amigo" sea
+// mutuo con una sola operación desde el cliente.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+
+      match /workouts/{workoutId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /friends/{friendId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if request.auth != null &&
+          (request.auth.uid == userId || request.auth.uid == friendId);
+      }
     }
   }
 }
