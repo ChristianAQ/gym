@@ -51,6 +51,16 @@ export function monthLabel(year, month) {
 const WEEKDAYS_ES = ["L", "M", "X", "J", "V", "S", "D"];
 export { WEEKDAYS_ES };
 
+const WEEKDAYS_FULL_ES = [
+  "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
+];
+
+export function formatFullDate(key) {
+  const date = keyToDate(key);
+  const weekday = WEEKDAYS_FULL_ES[date.getDay()];
+  return `${weekday}, ${date.getDate()} de ${MONTHS_ES[date.getMonth()].toLowerCase()}`;
+}
+
 // Cuadrícula de un mes: array de semanas, cada una con 7 celdas
 // ({ key, day, inMonth } | null para huecos fuera de mes).
 export function monthGrid(year, month) {

@@ -45,3 +45,7 @@ export function loginWithEmail(email, password) {
 export function logout() {
   return signOut(auth);
 }
+
+export function updateAuthProfile({ displayName, photoURL }) {
+  return updateProfile(auth.currentUser, { displayName, photoURL: photoURL || null });
+}

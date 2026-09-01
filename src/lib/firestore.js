@@ -7,6 +7,8 @@ import {
   collection,
   addDoc,
   getDocs,
+  query,
+  where,
   serverTimestamp,
   arrayUnion,
 } from "firebase/firestore";
@@ -84,6 +86,18 @@ export async function listWorkouts(uid) {
   return snaps.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .sort((a, b) => (a.dateKey < b.dateKey ? 1 : -1));
+}
+
+export async function getWorkoutsByDate(uid, dateKey) {
+  const q = query(collection(db, "users", uid, "workouts"), where("dateKey", "==", dateKey));
+  const snaps = await getDocs(q);
+  return snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// Actualiza nombre/foto en Firestore (fuente de verdad para lo que ven los
+// amigos) y, de forma best-effort, en la cuenta de Firebase Auth.
+export async function updateProfileData(uid, { displayName, photoURL }) {
+  await updateDoc(userRef(uid), { displayName, photoURL: photoURL || null });
 }
 
 // Amistad mutua: cada lado puede escribir en la subcolección `friends` del

@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { monthGrid, monthLabel, WEEKDAYS_ES, dateKey } from "../lib/date";
 
-export default function Calendar({ workoutDates = [] }) {
+export default function Calendar({ workoutDates = [], onSelectDay }) {
   const today = new Date();
   const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() });
   const [direction, setDirection] = useState(1);
@@ -59,7 +59,12 @@ export default function Calendar({ workoutDates = [] }) {
                 const logged = loggedSet.has(cell.key);
                 const isToday = cell.key === todayKey;
                 return (
-                  <div key={ci} className="aspect-square flex items-center justify-center">
+                  <button
+                    key={ci}
+                    type="button"
+                    onClick={() => onSelectDay?.(cell.key)}
+                    className="aspect-square flex items-center justify-center"
+                  >
                     <motion.div
                       initial={logged ? { scale: 0.4, opacity: 0 } : false}
                       animate={{ scale: 1, opacity: 1 }}
@@ -74,7 +79,7 @@ export default function Calendar({ workoutDates = [] }) {
                         <span className="absolute -bottom-1.5 w-1.5 h-1.5 rounded-full bg-blaze-300" />
                       )}
                     </motion.div>
-                  </div>
+                  </button>
                 );
               })}
             </div>

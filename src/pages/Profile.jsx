@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Copy, Check, UserPlus, LogOut, Dumbbell, CalendarCheck } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Copy, Check, UserPlus, LogOut, Dumbbell, CalendarCheck, Pencil, X, Loader2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { addFriend } from "../lib/firestore";
+import { addFriend, updateProfileData } from "../lib/firestore";
+import { updateAuthProfile } from "../firebase";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
 
@@ -12,6 +13,10 @@ export default function Profile() {
   const [friendId, setFriendId] = useState("");
   const [friendMsg, setFriendMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  const displayName = profile?.displayName || user?.displayName || "Atleta";
+  const photoURL = profile?.photoURL || user?.photoURL;
 
   async function copyId() {
     try {
@@ -44,13 +49,36 @@ export default function Profile() {
 
   return (
     <PageTransition className="px-5 pt-8 max-w-md mx-auto pb-6">
-      <div className="flex flex-col items-center text-center mb-6">
-        <Avatar name={user?.displayName} photoURL={user?.photoURL} size={72} />
-        <h1 className="font-heading text-xl font-semibold uppercase tracking-wide mt-3">
-          {user?.displayName || "Atleta"}
-        </h1>
-        <p className="text-ink-500 text-sm">{user?.email}</p>
-      </div>
+      <AnimatePresence mode="wait">
+        {editing ? (
+          <EditProfileForm
+            key="edit"
+            uid={user.uid}
+            initialName={displayName}
+            initialPhoto={photoURL}
+            onDone={() => setEditing(false)}
+          />
+        ) : (
+          <motion.div
+            key="view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center text-center mb-6 relative"
+          >
+            <button
+              onClick={() => setEditing(true)}
+              aria-label="Editar perfil"
+              className="absolute right-0 top-0 p-2.5 bg-ink-800 rounded-xl text-blaze-500"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <Avatar name={displayName} photoURL={photoURL} size={72} />
+            <h1 className="font-heading text-xl font-semibold uppercase tracking-wide mt-3">{displayName}</h1>
+            <p className="text-ink-500 text-sm">{user?.email}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-2 gap-4 mb-5">
         <StatCard icon={CalendarCheck} label="Entrenamientos" value={totalWorkouts} />
@@ -112,6 +140,86 @@ export default function Profile() {
         <LogOut className="w-4 h-4" /> Cerrar sesión
       </button>
     </PageTransition>
+  );
+}
+
+function EditProfileForm({ uid, initialName, initialPhoto, onDone }) {
+  const [name, setName] = useState(initialName);
+  const [photo, setPhoto] = useState(initialPhoto || "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave(e) {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError("El nombre no puede estar vacío.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await updateProfileData(uid, { displayName: name.trim(), photoURL: photo.trim() });
+      try {
+        await updateAuthProfile({ displayName: name.trim(), photoURL: photo.trim() });
+      } catch {
+        // No crítico: el perfil de Firestore (lo que ve el resto de la app) ya quedó guardado.
+      }
+      onDone();
+    } catch {
+      setError("No se pudo guardar. Inténtalo de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <motion.form
+      onSubmit={handleSave}
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className="card p-5 mb-6"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <p className="font-heading uppercase text-sm tracking-wide">Editar perfil</p>
+        <button type="button" onClick={onDone} className="p-1.5 text-ink-400">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="flex justify-center mb-4">
+        <Avatar name={name} photoURL={photo} size={64} />
+      </div>
+
+      <label className="block text-[11px] text-ink-500 uppercase tracking-wide mb-1">Nombre</label>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Tu nombre"
+        className="input-field mb-3"
+      />
+
+      <label className="block text-[11px] text-ink-500 uppercase tracking-wide mb-1">Foto de perfil (URL)</label>
+      <input
+        value={photo}
+        onChange={(e) => setPhoto(e.target.value)}
+        placeholder="https://..."
+        className="input-field mb-1"
+      />
+      <p className="text-ink-600 text-xs mb-4">Pega el enlace a una imagen tuya. Déjalo vacío para usar tus iniciales.</p>
+
+      {error && <p className="text-blaze-300 text-sm mb-3 text-center">{error}</p>}
+
+      <div className="flex gap-3">
+        <button type="button" onClick={onDone} className="btn-ghost flex-1">
+          Cancelar
+        </button>
+        <button type="submit" disabled={busy} className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-60">
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+          Guardar
+        </button>
+      </div>
+    </motion.form>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { motion } from "framer-motion";
-import { RefreshCw, Flame, Trophy, Users } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { RefreshCw, Flame, Trophy, Users, X, Swords } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { listFriendProfiles } from "../lib/firestore";
 import { KEY_EXERCISES } from "../lib/exercises";
@@ -19,6 +19,7 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("racha");
   const [exercise, setExercise] = useState(KEY_EXERCISES[0]);
+  const [rival, setRival] = useState(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -37,17 +38,19 @@ export default function Leaderboard() {
     load();
   }, [load]);
 
-  const people = useMemo(() => {
-    const me = {
+  const me = useMemo(
+    () => ({
       uid: user?.uid,
-      displayName: user?.displayName || "Tú",
-      photoURL: user?.photoURL,
+      displayName: profile?.displayName || user?.displayName || "Tú",
+      photoURL: profile?.photoURL || user?.photoURL,
       currentStreak: profile?.currentStreak ?? 0,
       bestStreak: profile?.bestStreak ?? 0,
       prs: profile?.prs ?? {},
-    };
-    return [me, ...friends];
-  }, [user, profile, friends]);
+    }),
+    [user, profile]
+  );
+
+  const people = useMemo(() => [me, ...friends], [me, friends]);
 
   const ranked = useMemo(() => {
     if (tab === "racha") {
@@ -103,13 +106,14 @@ export default function Leaderboard() {
         {ranked.map((p, i) => {
           const isMe = p.uid === user?.uid;
           return (
-            <motion.div
+            <motion.button
               key={p.uid}
               layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              className={`card p-3.5 flex items-center gap-3 ${isMe ? "ring-2 ring-blaze-500/60" : ""}`}
+              onClick={() => !isMe && setRival(p)}
+              className={`w-full card p-3.5 flex items-center gap-3 text-left ${isMe ? "ring-2 ring-blaze-500/60" : "active:bg-ink-800/60"}`}
             >
               <div
                 className={`w-8 h-8 rounded-lg flex items-center justify-center font-heading text-sm font-semibold shrink-0 ${
@@ -121,16 +125,100 @@ export default function Leaderboard() {
               <Avatar name={p.displayName} photoURL={p.photoURL} size={38} />
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{isMe ? `${p.displayName} (Tú)` : p.displayName}</p>
+                {!isMe && <p className="text-ink-500 text-xs">Toca para competir</p>}
               </div>
               <div className="text-right shrink-0">
                 <span className="font-heading text-lg font-semibold text-blaze-500">{p.value}</span>
                 <span className="text-ink-500 text-xs ml-1">{p.suffix}</span>
               </div>
-            </motion.div>
+            </motion.button>
           );
         })}
       </div>
+
+      <AnimatePresence>
+        {rival && <CompareModal me={me} rival={rival} onClose={() => setRival(null)} />}
+      </AnimatePresence>
     </PageTransition>
+  );
+}
+
+function CompareModal({ me, rival, onClose }) {
+  const rows = [
+    { label: "Racha actual", meVal: me.currentStreak ?? 0, rivalVal: rival.currentStreak ?? 0, suffix: "días" },
+    { label: "Mejor racha", meVal: me.bestStreak ?? 0, rivalVal: rival.bestStreak ?? 0, suffix: "días" },
+    ...KEY_EXERCISES.map((ex) => ({
+      label: ex,
+      meVal: me.prs?.[ex]?.weight ?? 0,
+      rivalVal: rival.prs?.[ex]?.weight ?? 0,
+      suffix: "kg",
+    })),
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-ink-900 border-t border-ink-800 rounded-t-3xl p-6 pb-10"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <Swords className="w-5 h-5 text-blaze-500" />
+            <p className="font-heading uppercase tracking-wide">Cara a cara</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-ink-400">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col items-center gap-1.5 w-24">
+            <Avatar name={me.displayName} photoURL={me.photoURL} size={52} />
+            <p className="text-xs text-ink-300 truncate max-w-full">Tú</p>
+          </div>
+          <span className="font-heading text-ink-600 text-sm">VS</span>
+          <div className="flex flex-col items-center gap-1.5 w-24">
+            <Avatar name={rival.displayName} photoURL={rival.photoURL} size={52} />
+            <p className="text-xs text-ink-300 truncate max-w-full">{rival.displayName}</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {rows.map((row) => (
+            <div key={row.label}>
+              <p className="text-center text-[11px] text-ink-500 uppercase tracking-wide mb-1">{row.label}</p>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`flex-1 text-right font-heading text-lg font-semibold ${
+                    row.meVal > row.rivalVal ? "text-blaze-500" : "text-ink-400"
+                  }`}
+                >
+                  {row.meVal} {row.suffix}
+                </span>
+                <div className="w-1 h-5 bg-ink-800 rounded-full shrink-0" />
+                <span
+                  className={`flex-1 text-left font-heading text-lg font-semibold ${
+                    row.rivalVal > row.meVal ? "text-blaze-500" : "text-ink-400"
+                  }`}
+                >
+                  {row.rivalVal} {row.suffix}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

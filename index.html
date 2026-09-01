@@ -2,11 +2,19 @@
 <html lang="es" class="bg-ink-950">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#0b0b0d" />
     <meta name="description" content="GymRat — registra tus entrenamientos, mantén la racha y compite con tus amigos." />
+
+    <!-- Add to Home Screen en iOS: hace que se abra como app standalone, sin la barra de Safari. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="GymRat" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+
     <link rel="icon" type="image/png" sizes="32x32" href="/gym/icons/favicon-32.png" />
-    <link rel="apple-touch-icon" href="/gym/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/gym/icons/apple-touch-icon.png" />
     <title>GymRat</title>
   </head>
   <body class="bg-ink-950 text-ink-100 font-body antialiased overscroll-none">
