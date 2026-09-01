@@ -1,9 +1,20 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RefreshCw, Flame, Trophy, Users, X, Swords, CalendarCheck, BarChart3, AlertTriangle } from "lucide-react";
+import {
+  RefreshCw,
+  Flame,
+  Trophy,
+  Users,
+  X,
+  Swords,
+  CalendarCheck,
+  BarChart3,
+  AlertTriangle,
+  ChevronDown,
+} from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { listFriendProfiles } from "../lib/firestore";
-import { KEY_EXERCISES } from "../lib/exercises";
+import { KEY_EXERCISES, MUSCLE_GROUPS } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
 
@@ -128,18 +139,30 @@ export default function Leaderboard() {
       </div>
 
       {tab === "records" && (
-        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
-          {KEY_EXERCISES.map((ex) => (
-            <button
-              key={ex}
-              onClick={() => setExercise(ex)}
-              className={`shrink-0 px-4 py-2 rounded-full text-xs font-heading uppercase tracking-wide whitespace-nowrap transition-colors ${
-                exercise === ex ? "bg-blaze-gradient text-white shadow-blaze" : "bg-ink-800 text-ink-400"
-              }`}
-            >
-              {ex}
-            </button>
-          ))}
+        <div className="relative mb-4">
+          <select
+            value={exercise}
+            onChange={(e) => setExercise(e.target.value)}
+            className="input-field w-full appearance-none pr-10"
+          >
+            <optgroup label="Ejercicios clave">
+              {KEY_EXERCISES.map((ex) => (
+                <option key={ex} value={ex}>
+                  {ex}
+                </option>
+              ))}
+            </optgroup>
+            {MUSCLE_GROUPS.map((group) => (
+              <optgroup key={group.name} label={group.name}>
+                {group.exercises.map((ex) => (
+                  <option key={ex} value={ex}>
+                    {ex}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
       )}
 

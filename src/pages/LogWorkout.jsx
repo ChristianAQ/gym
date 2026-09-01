@@ -5,7 +5,7 @@ import { X, Plus, Trash2, Loader2, PartyPopper, ChevronDown, ClipboardList } fro
 import { useAuth } from "../contexts/AuthContext";
 import { logWorkout } from "../lib/firestore";
 import { dateKey } from "../lib/date";
-import { COMMON_EXERCISES } from "../lib/exercises";
+import { COMMON_EXERCISES, MUSCLE_GROUPS } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 
 const CUSTOM = "__custom__";
@@ -150,10 +150,14 @@ export default function LogWorkout() {
                     <option value="" disabled>
                       Elige un ejercicio
                     </option>
-                    {COMMON_EXERCISES.map((ex) => (
-                      <option key={ex} value={ex}>
-                        {ex}
-                      </option>
+                    {MUSCLE_GROUPS.map((group) => (
+                      <optgroup key={group.name} label={group.name}>
+                        {group.exercises.map((ex) => (
+                          <option key={ex} value={ex}>
+                            {ex}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                     <option value={CUSTOM}>Otro ejercicio…</option>
                   </select>

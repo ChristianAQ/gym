@@ -4,8 +4,31 @@ import { Copy, Check, UserPlus, LogOut, Dumbbell, CalendarCheck, Pencil, X, Load
 import { useAuth } from "../contexts/AuthContext";
 import { addFriend, updateProfileData } from "../lib/firestore";
 import { updateAuthProfile } from "../firebase";
+import { MUSCLE_GROUPS } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
+
+// Agrupa los PRs por músculo (mismo catálogo que la rutina y el registro),
+// y deja aparte los que no encajen en ningún grupo (ejercicios
+// personalizados, o nombres de antes de organizar el catálogo).
+function groupPRsByMuscle(prs) {
+  const remaining = new Set(Object.keys(prs));
+  const groups = MUSCLE_GROUPS.map((group) => {
+    const items = group.exercises
+      .filter((ex) => prs[ex])
+      .map((ex) => {
+        remaining.delete(ex);
+        return [ex, prs[ex]];
+      })
+      .sort((a, b) => b[1].weight - a[1].weight);
+    return { name: group.name, items };
+  }).filter((group) => group.items.length > 0);
+
+  const others = [...remaining].map((ex) => [ex, prs[ex]]).sort((a, b) => b[1].weight - a[1].weight);
+  if (others.length > 0) groups.push({ name: "Otros", items: others });
+
+  return groups;
+}
 
 export default function Profile() {
   const { user, profile, logout } = useAuth();
@@ -48,7 +71,9 @@ export default function Profile() {
     }
   }
 
-  const prs = Object.entries(profile?.prs ?? {}).sort((a, b) => b[1].weight - a[1].weight);
+  const prsMap = profile?.prs ?? {};
+  const prCount = Object.keys(prsMap).length;
+  const prGroups = groupPRsByMuscle(prsMap);
   const totalWorkouts = profile?.workoutDates?.length ?? 0;
 
   return (
@@ -86,7 +111,7 @@ export default function Profile() {
 
       <div className="grid grid-cols-2 gap-4 mb-5">
         <StatCard icon={CalendarCheck} label="Entrenamientos" value={totalWorkouts} />
-        <StatCard icon={Dumbbell} label="Récords" value={prs.length} />
+        <StatCard icon={Dumbbell} label="Récords" value={prCount} />
       </div>
 
       <div className="card p-5 mb-4">
@@ -124,16 +149,25 @@ export default function Profile() {
         )}
       </form>
 
-      {prs.length > 0 && (
+      {prGroups.length > 0 && (
         <div className="card p-5 mb-4">
           <p className="font-heading uppercase text-xs tracking-wide text-ink-400 mb-3">Tus récords</p>
-          <div className="space-y-2">
-            {prs.map(([name, pr]) => (
-              <div key={name} className="flex items-center justify-between text-sm">
-                <span className="text-ink-200">{name}</span>
-                <span className="font-heading font-semibold text-blaze-500">
-                  {pr.weight} kg <span className="text-ink-500 font-normal">× {pr.reps}</span>
-                </span>
+          <div className="space-y-4">
+            {prGroups.map((group) => (
+              <div key={group.name}>
+                <p className="text-blaze-500 text-[11px] font-heading uppercase tracking-wide mb-1.5">
+                  {group.name}
+                </p>
+                <div className="space-y-2">
+                  {group.items.map(([name, pr]) => (
+                    <div key={name} className="flex items-center justify-between text-sm">
+                      <span className="text-ink-200">{name}</span>
+                      <span className="font-heading font-semibold text-blaze-500">
+                        {pr.weight} kg <span className="text-ink-500 font-normal">× {pr.reps}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

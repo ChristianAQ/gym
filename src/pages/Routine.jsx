@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, ChevronDown, Save, Loader2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { updateRoutine } from "../lib/firestore";
-import { COMMON_EXERCISES } from "../lib/exercises";
+import { COMMON_EXERCISES, MUSCLE_GROUPS } from "../lib/exercises";
 import { WEEKDAYS_FULL_ES } from "../lib/date";
 import PageTransition from "../components/PageTransition";
 
@@ -129,10 +129,14 @@ export default function Routine() {
                                 <option value="" disabled>
                                   Elige un ejercicio
                                 </option>
-                                {COMMON_EXERCISES.map((ex) => (
-                                  <option key={ex} value={ex}>
-                                    {ex}
-                                  </option>
+                                {MUSCLE_GROUPS.map((group) => (
+                                  <optgroup key={group.name} label={group.name}>
+                                    {group.exercises.map((ex) => (
+                                      <option key={ex} value={ex}>
+                                        {ex}
+                                      </option>
+                                    ))}
+                                  </optgroup>
                                 ))}
                                 <option value={CUSTOM}>Otro ejercicio…</option>
                               </select>
