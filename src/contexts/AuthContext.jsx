@@ -1,7 +1,14 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, signInWithGoogle, registerWithEmail, loginWithEmail, logout as firebaseLogout } from "../firebase";
+import {
+  auth,
+  signInWithGoogle,
+  registerWithEmail,
+  loginWithEmail,
+  resetPassword,
+  logout as firebaseLogout,
+} from "../firebase";
 import { ensureUserProfile, subscribeToUser } from "../lib/firestore";
 
 export const AuthContext = createContext(null);
@@ -55,6 +62,7 @@ export function AuthProvider({ children }) {
     signInWithGoogle,
     registerWithEmail,
     loginWithEmail,
+    resetPassword,
     logout,
   };
 

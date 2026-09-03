@@ -35,8 +35,8 @@ export default function BottomNav() {
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 pb-[env(safe-area-inset-bottom)]">
-      <div className="relative bg-ink-900/95 backdrop-blur border-t border-ink-800">
+    <nav className="fixed bottom-0 inset-x-0 z-40">
+      <div className="relative bg-ink-900/95 backdrop-blur border-t border-ink-800 pb-[env(safe-area-inset-bottom)]">
         {/* El hueco central (mismo ancho que el FAB) no tiene ningún botón de
             navegación debajo, para que el FAB no le robe los toques a nada. */}
         <div className="flex items-stretch h-16 max-w-md mx-auto">

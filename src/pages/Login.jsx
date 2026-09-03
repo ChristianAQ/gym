@@ -14,6 +14,7 @@ const ERROR_MESSAGES = {
   "auth/popup-closed-by-user": "Ventana de Google cerrada antes de terminar.",
   "auth/operation-not-allowed": "Este método de acceso no está activado todavía en Firebase.",
   "auth/too-many-requests": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
+  "auth/user-not-found": "No hay ninguna cuenta con ese correo.",
 };
 
 function friendlyError(err) {
@@ -21,13 +22,15 @@ function friendlyError(err) {
 }
 
 export default function Login() {
-  const { user, loading, signInWithGoogle, registerWithEmail, loginWithEmail } = useAuth();
+  const { user, loading, signInWithGoogle, registerWithEmail, loginWithEmail, resetPassword } = useAuth();
   const [mode, setMode] = useState("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [resetMsg, setResetMsg] = useState(null);
+  const [resetBusy, setResetBusy] = useState(false);
 
   if (!loading && user) return <Navigate to="/" replace />;
 
@@ -45,6 +48,23 @@ export default function Login() {
       setError(friendlyError(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    setResetMsg(null);
+    if (!email.trim()) {
+      setResetMsg({ type: "error", text: "Escribe tu correo arriba y vuelve a intentarlo." });
+      return;
+    }
+    setResetBusy(true);
+    try {
+      await resetPassword(email.trim());
+      setResetMsg({ type: "ok", text: "Te hemos enviado un correo para restablecer tu contraseña." });
+    } catch (err) {
+      setResetMsg({ type: "error", text: friendlyError(err) });
+    } finally {
+      setResetBusy(false);
     }
   }
 
@@ -129,6 +149,29 @@ export default function Login() {
               className="input-field pl-11"
             />
           </div>
+
+          {mode === "login" && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={resetBusy}
+                className="text-blaze-400 text-xs disabled:opacity-60"
+              >
+                {resetBusy ? "Enviando..." : "¿Olvidaste tu contraseña?"}
+              </button>
+            </div>
+          )}
+
+          {resetMsg && (
+            <motion.p
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`text-sm text-center ${resetMsg.type === "ok" ? "text-blaze-400" : "text-blaze-300"}`}
+            >
+              {resetMsg.text}
+            </motion.p>
+          )}
 
           {error && (
             <motion.p

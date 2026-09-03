@@ -7,6 +7,7 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
   signOut,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -44,6 +45,10 @@ export function loginWithEmail(email, password) {
 
 export function logout() {
   return signOut(auth);
+}
+
+export function resetPassword(email) {
+  return sendPasswordResetEmail(auth, email);
 }
 
 export function updateAuthProfile({ displayName, photoURL }) {
