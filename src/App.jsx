@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import ProtectedRoute from "./components/ProtectedRoute";
+import TopBar from "./components/TopBar";
 import BottomNav from "./components/BottomNav";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -12,7 +13,8 @@ import Routine from "./pages/Routine";
 function AppShell({ children, showNav }) {
   return (
     <div className="min-h-screen">
-      <main className={showNav ? "pb-28" : ""}>{children}</main>
+      {showNav && <TopBar />}
+      <main className={showNav ? "pt-[calc(env(safe-area-inset-top)+3.5rem)] pb-28" : ""}>{children}</main>
       {showNav && <BottomNav />}
     </div>
   );

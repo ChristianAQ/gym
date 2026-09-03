@@ -78,7 +78,7 @@ export default function Profile() {
   const totalWorkouts = profile?.workoutDates?.length ?? 0;
 
   return (
-    <PageTransition className="px-5 pt-[calc(env(safe-area-inset-top)+2rem)] max-w-md mx-auto pb-6">
+    <PageTransition className="px-5 pt-8 max-w-md mx-auto pb-6">
       <AnimatePresence mode="wait">
         {editing ? (
           <EditProfileForm

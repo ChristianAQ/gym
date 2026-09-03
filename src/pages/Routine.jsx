@@ -205,7 +205,7 @@ export default function Routine() {
   const hasSavedRoutine = countExercises(profile?.routine) > 0;
 
   return (
-    <PageTransition className="px-5 pt-[calc(env(safe-area-inset-top)+2rem)] pb-8 max-w-md mx-auto">
+    <PageTransition className="px-5 pt-8 pb-8 max-w-md mx-auto">
       <div className="flex items-start justify-between mb-1">
         <h1 className="font-heading text-2xl font-semibold uppercase tracking-wide">Tu rutina</h1>
         <button
