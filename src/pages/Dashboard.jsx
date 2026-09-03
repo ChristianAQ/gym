@@ -11,6 +11,16 @@ import Calendar from "../components/Calendar";
 import Avatar from "../components/Avatar";
 import MuscleIcon from "../components/MuscleIcon";
 
+// Cuántos días de la semana son de entreno (no descanso) según la rutina
+// activa — el objetivo semanal no tiene sentido pedir más días de los que
+// la propia rutina dedica a entrenar. Sin rutina activa no hay con qué
+// acotarlo, así que se permiten los 7.
+function trainingDaysCount(routine) {
+  if (!routine) return 7;
+  const restCount = Object.values(routine.restDays || {}).filter(Boolean).length;
+  return Math.max(0, 7 - restCount);
+}
+
 export default function Dashboard() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -33,7 +43,8 @@ export default function Dashboard() {
     3
   );
 
-  const weeklyGoal = profile?.weeklyGoal ?? null;
+  const maxGoal = trainingDaysCount(activeRoutine);
+  const weeklyGoal = profile?.weeklyGoal ? Math.min(profile.weeklyGoal, maxGoal) : null;
   const weekCount = countThisWeek(workoutDates);
 
   async function handleSetGoal(n) {
@@ -116,7 +127,7 @@ export default function Dashboard() {
       </div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <Calendar workoutDates={workoutDates} onSelectDay={setSelectedDay} />
+        <Calendar workoutDates={workoutDates} restDays={activeRoutine?.restDays} onSelectDay={setSelectedDay} />
       </motion.div>
 
       <AnimatePresence>
@@ -132,14 +143,19 @@ export default function Dashboard() {
 
       <AnimatePresence>
         {goalSheetOpen && (
-          <WeeklyGoalSheet weeklyGoal={weeklyGoal} onSelect={handleSetGoal} onClose={() => setGoalSheetOpen(false)} />
+          <WeeklyGoalSheet
+            weeklyGoal={weeklyGoal}
+            maxGoal={maxGoal}
+            onSelect={handleSetGoal}
+            onClose={() => setGoalSheetOpen(false)}
+          />
         )}
       </AnimatePresence>
     </PageTransition>
   );
 }
 
-function WeeklyGoalSheet({ weeklyGoal, onSelect, onClose }) {
+function WeeklyGoalSheet({ weeklyGoal, maxGoal, onSelect, onClose }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -162,19 +178,34 @@ function WeeklyGoalSheet({ weeklyGoal, onSelect, onClose }) {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-ink-500 text-sm mb-4">¿Cuántos días a la semana quieres entrenar?</p>
+        <p className="text-ink-500 text-sm mb-1">¿Cuántos días a la semana quieres entrenar?</p>
+        <p className="text-ink-600 text-xs mb-4 min-h-[2.5em]">
+          {maxGoal === 0
+            ? "Tu rutina activa no tiene ningún día de entreno — marca alguno como no descanso."
+            : maxGoal < 7
+            ? `Tu rutina activa tiene ${maxGoal} ${maxGoal === 1 ? "día" : "días"} de entreno a la semana.`
+            : ""}
+        </p>
         <div className="grid grid-cols-4 gap-2">
-          {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-            <button
-              key={n}
-              onClick={() => onSelect(n)}
-              className={`py-3 rounded-xl text-sm font-heading transition-colors ${
-                weeklyGoal === n ? "bg-blaze-gradient text-white shadow-blaze" : "bg-ink-800 text-ink-400 active:bg-ink-700"
-              }`}
-            >
-              {n}
-            </button>
-          ))}
+          {[1, 2, 3, 4, 5, 6, 7].map((n) => {
+            const disabled = n > maxGoal;
+            return (
+              <button
+                key={n}
+                onClick={() => !disabled && onSelect(n)}
+                disabled={disabled}
+                className={`py-3 rounded-xl text-sm font-heading transition-colors ${
+                  weeklyGoal === n
+                    ? "bg-blaze-gradient text-white shadow-blaze"
+                    : disabled
+                    ? "bg-ink-800/40 text-ink-700"
+                    : "bg-ink-800 text-ink-400 active:bg-ink-700"
+                }`}
+              >
+                {n}
+              </button>
+            );
+          })}
         </div>
       </motion.div>
     </motion.div>

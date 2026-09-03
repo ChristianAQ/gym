@@ -1,9 +1,17 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flame, Moon } from "lucide-react";
 import { monthGrid, monthLabel, WEEKDAYS_ES, dateKey } from "../lib/date";
 
-export default function Calendar({ workoutDates = [], onSelectDay }) {
+// `restDays` es el mapa de días de descanso de la rutina activa
+// (0=domingo ... 6=sábado, igual que Date#getDay()). La rejilla siempre
+// empieza en lunes (mismo orden que WEEKDAYS_ES), así que la columna de
+// cada celda ya dice qué día de la semana es sin mirar la fecha en sí.
+function weekdayOfColumn(ci) {
+  return (ci + 1) % 7;
+}
+
+export default function Calendar({ workoutDates = [], restDays = {}, onSelectDay }) {
   const today = new Date();
   const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() });
   const [direction, setDirection] = useState(1);
@@ -58,6 +66,10 @@ export default function Calendar({ workoutDates = [], onSelectDay }) {
                 if (!cell) return <div key={ci} className="aspect-square" />;
                 const logged = loggedSet.has(cell.key);
                 const isToday = cell.key === todayKey;
+                // Días de descanso planificados: solo se marcan si ese día no
+                // se llegó a registrar nada (si hay entreno registrado, gana
+                // el logro sobre la plantilla).
+                const isRestDay = !logged && !!restDays[weekdayOfColumn(ci)];
                 return (
                   <button
                     key={ci}
@@ -70,11 +82,14 @@ export default function Calendar({ workoutDates = [], onSelectDay }) {
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ type: "spring", stiffness: 400, damping: 18 }}
                       className={`relative w-8 h-8 rounded-xl flex items-center justify-center text-xs font-medium
-                        ${logged ? "bg-blaze-gradient text-white shadow-blaze" : "text-ink-300"}
+                        ${logged ? "bg-blaze-gradient text-white shadow-blaze" : isRestDay ? "bg-ink-800/40 text-ink-500" : "text-ink-300"}
                         ${isToday && !logged ? "ring-2 ring-blaze-500/70" : ""}
                       `}
                     >
                       {logged ? <Flame className="w-4 h-4" strokeWidth={2.5} /> : cell.day}
+                      {isRestDay && (
+                        <Moon className="absolute -top-1 -right-1 w-3 h-3 text-ink-400 bg-ink-900 rounded-full p-0.5" />
+                      )}
                       {isToday && logged && (
                         <span className="absolute -bottom-1.5 w-1.5 h-1.5 rounded-full bg-blaze-300" />
                       )}
