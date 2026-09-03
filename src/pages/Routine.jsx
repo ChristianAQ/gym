@@ -50,6 +50,23 @@ function dayMuscles(rows) {
   return [...names].slice(0, 4);
 }
 
+// Agrupa las filas de un día por músculo (mismo orden que el catálogo), con
+// una sección "Otros" al final para filas sin músculo asociado (casos
+// raros: un ejercicio personalizado que no coincide con ningún catálogo).
+function groupRowsByMuscle(rows) {
+  const remaining = new Set(rows.map((r) => r.id));
+  const groups = MUSCLE_GROUPS.map((group) => {
+    const items = rows.filter((r) => r.muscle === group.name);
+    items.forEach((r) => remaining.delete(r.id));
+    return { name: group.name, items };
+  }).filter((group) => group.items.length > 0);
+
+  const others = rows.filter((r) => remaining.has(r.id));
+  if (others.length > 0) groups.push({ name: "Otros", items: others });
+
+  return groups;
+}
+
 function buildInitialDays(routine) {
   const days = {};
   for (const day of DAY_ORDER) {
@@ -208,6 +225,8 @@ export default function Routine() {
         {DAY_ORDER.map((day) => {
           const exercises = days[day];
           const isOpen = openDay === day;
+          const usedMuscles = new Set(exercises.map((r) => r.muscle).filter(Boolean));
+          const groupedRows = groupRowsByMuscle(exercises);
           return (
             <div key={day} className="card overflow-hidden">
               <button
@@ -238,13 +257,49 @@ export default function Routine() {
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-4 pb-4 space-y-3">
+                    <div className="px-4 pb-4 space-y-4">
+                      <div>
+                        <p className="text-[10px] text-ink-500 uppercase tracking-wide text-center mb-2">
+                          Añadir ejercicio de...
+                        </p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {MUSCLE_GROUPS.map((group) => {
+                            const active = usedMuscles.has(group.name);
+                            return (
+                              <button
+                                key={group.name}
+                                type="button"
+                                onClick={() => addRow(day, group.name)}
+                                aria-label={`Añadir ejercicio de ${group.name}`}
+                                className={`flex flex-col items-center gap-1 py-2.5 rounded-xl transition-colors ${
+                                  active
+                                    ? "bg-blaze-gradient text-white shadow-blaze"
+                                    : "bg-ink-800/60 text-ink-400 active:bg-blaze-500/15 active:text-blaze-500"
+                                }`}
+                              >
+                                <MuscleIcon muscle={group.name} className="w-4 h-4" />
+                                <span className="text-[9px] font-heading uppercase tracking-wide leading-none">
+                                  {group.name}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       {exercises.length === 0 && (
                         <p className="text-ink-600 text-sm text-center py-2">
                           Día de descanso — sin ejercicios todavía.
                         </p>
                       )}
-                      {exercises.map((row) => (
+
+                      {groupedRows.map((group) => (
+                        <div key={group.name} className="space-y-3">
+                          <p className="text-blaze-500 text-[11px] font-heading uppercase tracking-wide flex items-center gap-1.5">
+                            <MuscleIcon muscle={group.name} className="w-3.5 h-3.5" />
+                            {group.name}
+                          </p>
+                          {group.items.map((row) => (
                         <div key={row.id} className="bg-ink-800/60 rounded-2xl p-3">
                           <div className="flex items-center gap-2 mb-2">
                             <div className="w-8 h-8 rounded-lg bg-blaze-500/15 flex items-center justify-center shrink-0">
@@ -334,29 +389,9 @@ export default function Routine() {
                             </div>
                           </div>
                         </div>
-                      ))}
-
-                      <div>
-                        <p className="text-[10px] text-ink-500 uppercase tracking-wide text-center mb-2">
-                          Añadir ejercicio de...
-                        </p>
-                        <div className="grid grid-cols-4 gap-2">
-                          {MUSCLE_GROUPS.map((group) => (
-                            <button
-                              key={group.name}
-                              type="button"
-                              onClick={() => addRow(day, group.name)}
-                              aria-label={`Añadir ejercicio de ${group.name}`}
-                              className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-ink-800/60 text-ink-400 active:bg-blaze-500/15 active:text-blaze-500"
-                            >
-                              <MuscleIcon muscle={group.name} className="w-4 h-4" />
-                              <span className="text-[9px] font-heading uppercase tracking-wide leading-none">
-                                {group.name}
-                              </span>
-                            </button>
                           ))}
                         </div>
-                      </div>
+                      ))}
                     </div>
                   </motion.div>
                 )}
