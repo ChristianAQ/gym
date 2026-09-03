@@ -1,23 +1,25 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Trash2, Loader2, PartyPopper, ChevronDown, ClipboardList } from "lucide-react";
+import { X, Trash2, Loader2, PartyPopper, ChevronDown, ClipboardList } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { logWorkout } from "../lib/firestore";
 import { dateKey } from "../lib/date";
-import { COMMON_EXERCISES, MUSCLE_GROUPS } from "../lib/exercises";
+import { COMMON_EXERCISES, MUSCLE_GROUPS, EXERCISE_TO_MUSCLE } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 import MuscleIcon from "../components/MuscleIcon";
+import QuickAddSheet from "../components/QuickAddSheet";
 
 const CUSTOM = "__custom__";
 
 let rowId = 0;
-function emptyRow(ex) {
+function newRow(ex, muscle) {
   rowId += 1;
   const name = ex?.name || "";
   return {
     id: rowId,
     name,
+    muscle: muscle || (name ? EXERCISE_TO_MUSCLE[name] : undefined),
     custom: !!name && !COMMON_EXERCISES.includes(name),
     sets: String(ex?.sets ?? 3),
     reps: String(ex?.reps ?? 10),
@@ -31,8 +33,8 @@ function emptyRow(ex) {
 // cualquier fila sin que eso afecte a la rutina guardada.
 function initialRows(routine) {
   const today = routine?.[new Date().getDay()];
-  if (today && today.length > 0) return today.map((ex) => emptyRow(ex));
-  return [emptyRow()];
+  if (today && today.length > 0) return today.map((ex) => newRow(ex));
+  return [];
 }
 
 export default function LogWorkout() {
@@ -44,17 +46,29 @@ export default function LogWorkout() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
+  const [pickerMuscle, setPickerMuscle] = useState(null);
 
   const prs = profile?.prs || {};
+  const usedMuscles = new Set(rows.map((r) => r.muscle).filter(Boolean));
 
-  function updateRow(id, field, value) {
-    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
-  }
-  function addRow() {
-    setRows((rs) => [...rs, emptyRow()]);
+  function patchRow(id, patch) {
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
   function removeRow(id) {
-    setRows((rs) => (rs.length > 1 ? rs.filter((r) => r.id !== id) : rs));
+    setRows((rs) => rs.filter((r) => r.id !== id));
+  }
+  // Toca un ejercicio del catálogo en la hoja rápida: si ya estaba en la
+  // lista lo quita, si no lo añade — así se pueden marcar varios de un
+  // tirón sin reabrir nada entre uno y otro.
+  function toggleExercise(muscle, name) {
+    setRows((rs) => {
+      const existing = rs.find((r) => r.muscle === muscle && r.name === name);
+      if (existing) return rs.filter((r) => r.id !== existing.id);
+      return [...rs, newRow({ name }, muscle)];
+    });
+  }
+  function addCustom(muscle, name) {
+    setRows((rs) => [...rs, newRow({ name }, muscle)]);
   }
   function isPR(row) {
     const w = Number(row.weight);
@@ -127,6 +141,30 @@ export default function LogWorkout() {
           </div>
         )}
 
+        <div className="grid grid-cols-4 gap-2">
+          {MUSCLE_GROUPS.map((group) => {
+            const active = usedMuscles.has(group.name);
+            return (
+              <button
+                key={group.name}
+                type="button"
+                onClick={() => setPickerMuscle(group.name)}
+                aria-label={`Añadir ejercicio de ${group.name}`}
+                className={`flex flex-col items-center gap-1 py-2.5 rounded-xl transition-colors ${
+                  active
+                    ? "bg-blaze-gradient text-white shadow-blaze"
+                    : "bg-ink-800/60 text-ink-400 active:bg-blaze-500/15 active:text-blaze-500"
+                }`}
+              >
+                <MuscleIcon muscle={group.name} className="w-4 h-4" />
+                <span className="text-[9px] font-heading uppercase tracking-wide leading-none">
+                  {group.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         <AnimatePresence initial={false}>
           {rows.map((row) => (
             <motion.div
@@ -139,33 +177,40 @@ export default function LogWorkout() {
             >
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-blaze-500/15 flex items-center justify-center shrink-0">
-                  <MuscleIcon exercise={row.name} className="w-4 h-4 text-blaze-500" />
+                  <MuscleIcon muscle={row.muscle} exercise={row.name} className="w-4 h-4 text-blaze-500" />
                 </div>
-                <div className="relative flex-1">
+                <div className="relative flex-1 min-w-0">
                   <select
                     value={row.custom ? CUSTOM : row.name}
                     onChange={(e) => {
                       const v = e.target.value;
-                      if (v === CUSTOM) {
-                        setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, custom: true, name: "" } : r)));
-                      } else {
-                        setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, custom: false, name: v } : r)));
-                      }
+                      if (v === CUSTOM) patchRow(row.id, { custom: true, name: "" });
+                      else patchRow(row.id, { custom: false, name: v });
                     }}
                     className="input-field w-full appearance-none pr-10"
                   >
                     <option value="" disabled>
-                      Elige un ejercicio
+                      Elige un ejercicio{row.muscle ? ` de ${row.muscle.toLowerCase()}` : ""}
                     </option>
-                    {MUSCLE_GROUPS.map((group) => (
-                      <optgroup key={group.name} label={group.name}>
-                        {group.exercises.map((ex) => (
-                          <option key={ex} value={ex}>
-                            {ex}
-                          </option>
+                    {row.muscle ? (
+                      MUSCLE_GROUPS.find((g) => g.name === row.muscle)?.exercises.map((ex) => (
+                        <option key={ex} value={ex}>
+                          {ex}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        {MUSCLE_GROUPS.map((group) => (
+                          <optgroup key={group.name} label={group.name}>
+                            {group.exercises.map((ex) => (
+                              <option key={ex} value={ex}>
+                                {ex}
+                              </option>
+                            ))}
+                          </optgroup>
                         ))}
-                      </optgroup>
-                    ))}
+                      </>
+                    )}
                     <option value={CUSTOM}>Otro ejercicio…</option>
                   </select>
                   <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -182,10 +227,10 @@ export default function LogWorkout() {
 
               {row.custom && (
                 <input
-                  autoFocus
+                  autoFocus={!row.name}
                   placeholder="Nombre del ejercicio"
                   value={row.name}
-                  onChange={(e) => updateRow(row.id, "name", e.target.value)}
+                  onChange={(e) => patchRow(row.id, { name: e.target.value })}
                   className="input-field mb-3"
                 />
               )}
@@ -196,7 +241,7 @@ export default function LogWorkout() {
                     min="0"
                     inputMode="numeric"
                     value={row.sets}
-                    onChange={(e) => updateRow(row.id, "sets", e.target.value)}
+                    onChange={(e) => patchRow(row.id, { sets: e.target.value })}
                     className="input-field text-center py-2.5"
                   />
                 </Field>
@@ -206,7 +251,7 @@ export default function LogWorkout() {
                     min="0"
                     inputMode="numeric"
                     value={row.reps}
-                    onChange={(e) => updateRow(row.id, "reps", e.target.value)}
+                    onChange={(e) => patchRow(row.id, { reps: e.target.value })}
                     className="input-field text-center py-2.5"
                   />
                 </Field>
@@ -217,7 +262,7 @@ export default function LogWorkout() {
                     step="0.5"
                     inputMode="decimal"
                     value={row.weight}
-                    onChange={(e) => updateRow(row.id, "weight", e.target.value)}
+                    onChange={(e) => patchRow(row.id, { weight: e.target.value })}
                     className="input-field text-center py-2.5"
                   />
                 </Field>
@@ -235,13 +280,11 @@ export default function LogWorkout() {
           ))}
         </AnimatePresence>
 
-        <button
-          type="button"
-          onClick={addRow}
-          className="w-full flex items-center justify-center gap-2 py-3 text-blaze-500 font-heading uppercase text-sm tracking-wide border border-dashed border-ink-700 rounded-2xl active:bg-ink-800/50"
-        >
-          <Plus className="w-4 h-4" /> Añadir ejercicio
-        </button>
+        {rows.length === 0 && (
+          <p className="text-ink-500 text-sm text-center py-6">
+            Toca un grupo muscular arriba para añadir ejercicios.
+          </p>
+        )}
 
         <textarea
           placeholder="Notas (opcional)"
@@ -258,6 +301,18 @@ export default function LogWorkout() {
           Guardar entrenamiento
         </button>
       </form>
+
+      <AnimatePresence>
+        {pickerMuscle && (
+          <QuickAddSheet
+            muscle={pickerMuscle}
+            rows={rows}
+            onToggle={(name) => toggleExercise(pickerMuscle, name)}
+            onAddCustom={(name) => addCustom(pickerMuscle, name)}
+            onClose={() => setPickerMuscle(null)}
+          />
+        )}
+      </AnimatePresence>
     </PageTransition>
   );
 }
