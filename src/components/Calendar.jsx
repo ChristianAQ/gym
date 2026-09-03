@@ -21,8 +21,8 @@ export default function Calendar({ workoutDates = [], onSelectDay }) {
   }
 
   return (
-    <div className="card p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="card p-4">
+      <div className="flex items-center justify-between mb-3">
         <button onClick={() => shift(-1)} className="p-2 -ml-2 text-ink-400 active:text-blaze-500 transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -34,7 +34,7 @@ export default function Calendar({ workoutDates = [], onSelectDay }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-7 mb-2">
+      <div className="grid grid-cols-7 mb-1.5">
         {WEEKDAYS_ES.map((d) => (
           <span key={d} className="text-center text-[11px] text-ink-500 font-heading uppercase">
             {d}
@@ -50,7 +50,7 @@ export default function Calendar({ workoutDates = [], onSelectDay }) {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -24 * direction }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="space-y-1.5"
+          className="space-y-1"
         >
           {weeks.map((week, wi) => (
             <div key={wi} className="grid grid-cols-7">
