@@ -88,6 +88,8 @@ export default function Routine() {
   const [shareOpen, setShareOpen] = useState(false);
   const [incoming, setIncoming] = useState([]);
   const [importedMsg, setImportedMsg] = useState("");
+  const [pickerMuscle, setPickerMuscle] = useState(null); // { day, muscle } | null
+  const [collapsedGroups, setCollapsedGroups] = useState({}); // `${day}:${muscle}` -> bool
 
   const loadIncoming = useCallback(async () => {
     if (!user) return;
@@ -106,11 +108,25 @@ export default function Routine() {
   function patchRow(day, id, patch) {
     setDays((d) => ({ ...d, [day]: d[day].map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
   }
-  function addRow(day, muscle) {
-    setDays((d) => ({ ...d, [day]: [...d[day], newRow(undefined, muscle)] }));
+  function addRow(day, muscle, name) {
+    setDays((d) => ({ ...d, [day]: [...d[day], newRow(name ? { name } : undefined, muscle)] }));
   }
   function removeRow(day, id) {
     setDays((d) => ({ ...d, [day]: d[day].filter((r) => r.id !== id) }));
+  }
+  // Toca un ejercicio del catálogo en la hoja rápida: si ya estaba en el día
+  // lo quita, si no lo añade — así se pueden marcar varios de un tirón sin
+  // reabrir nada entre uno y otro.
+  function toggleExercise(day, muscle, name) {
+    setDays((d) => {
+      const existing = d[day].find((r) => r.muscle === muscle && r.name === name);
+      if (existing) return { ...d, [day]: d[day].filter((r) => r.id !== existing.id) };
+      return { ...d, [day]: [...d[day], newRow({ name }, muscle)] };
+    });
+  }
+  function toggleGroupCollapse(day, muscle) {
+    const key = `${day}:${muscle}`;
+    setCollapsedGroups((c) => ({ ...c, [key]: !c[key] }));
   }
 
   function currentRoutine() {
@@ -269,7 +285,7 @@ export default function Routine() {
                               <button
                                 key={group.name}
                                 type="button"
-                                onClick={() => addRow(day, group.name)}
+                                onClick={() => setPickerMuscle({ day, muscle: group.name })}
                                 aria-label={`Añadir ejercicio de ${group.name}`}
                                 className={`flex flex-col items-center gap-1 py-2.5 rounded-xl transition-colors ${
                                   active
@@ -293,12 +309,33 @@ export default function Routine() {
                         </p>
                       )}
 
-                      {groupedRows.map((group) => (
+                      {groupedRows.map((group) => {
+                        const collapseKey = `${day}:${group.name}`;
+                        const collapsed = !!collapsedGroups[collapseKey];
+                        return (
                         <div key={group.name} className="space-y-3">
-                          <p className="text-blaze-500 text-[11px] font-heading uppercase tracking-wide flex items-center gap-1.5">
-                            <MuscleIcon muscle={group.name} className="w-3.5 h-3.5" />
-                            {group.name}
-                          </p>
+                          <button
+                            type="button"
+                            onClick={() => toggleGroupCollapse(day, group.name)}
+                            className="w-full flex items-center justify-between"
+                          >
+                            <span className="text-blaze-500 text-[11px] font-heading uppercase tracking-wide flex items-center gap-1.5">
+                              <MuscleIcon muscle={group.name} className="w-3.5 h-3.5" />
+                              {group.name}
+                              <span className="text-ink-500 normal-case">({group.items.length})</span>
+                            </span>
+                            <ChevronDown
+                              className={`w-3.5 h-3.5 text-ink-500 transition-transform ${collapsed ? "" : "rotate-180"}`}
+                            />
+                          </button>
+                          <AnimatePresence initial={false}>
+                            {!collapsed && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden space-y-3"
+                              >
                           {group.items.map((row) => (
                         <div key={row.id} className="bg-ink-800/60 rounded-2xl p-3">
                           <div className="flex items-center gap-2 mb-2">
@@ -390,8 +427,12 @@ export default function Routine() {
                           </div>
                         </div>
                           ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </motion.div>
                 )}
@@ -415,7 +456,118 @@ export default function Routine() {
           <ShareSheet user={user} profile={profile} onClose={() => setShareOpen(false)} />
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {pickerMuscle && (
+          <QuickAddSheet
+            muscle={pickerMuscle.muscle}
+            rows={days[pickerMuscle.day]}
+            onToggle={(name) => toggleExercise(pickerMuscle.day, pickerMuscle.muscle, name)}
+            onAddCustom={(name) => addRow(pickerMuscle.day, pickerMuscle.muscle, name)}
+            onClose={() => setPickerMuscle(null)}
+          />
+        )}
+      </AnimatePresence>
     </PageTransition>
+  );
+}
+
+// Hoja rápida para meter varios ejercicios de un músculo de un tirón: cada
+// toque añade o quita ese ejercicio del día (sin cerrarse ni reabrir un
+// desplegable nativo por cada uno), y se puede escribir uno propio al final.
+function QuickAddSheet({ muscle, rows, onToggle, onAddCustom, onClose }) {
+  const group = MUSCLE_GROUPS.find((g) => g.name === muscle);
+  const selectedNames = new Set(rows.filter((r) => r.muscle === muscle && !r.custom).map((r) => r.name));
+  const [showCustom, setShowCustom] = useState(false);
+  const [customName, setCustomName] = useState("");
+
+  function submitCustom(e) {
+    e.preventDefault();
+    if (!customName.trim()) return;
+    onAddCustom(customName.trim());
+    setCustomName("");
+    setShowCustom(false);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-ink-900 border-t border-ink-800 rounded-t-3xl p-6 pb-10 max-h-[75vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-1">
+          <p className="font-heading uppercase tracking-wide flex items-center gap-2">
+            <MuscleIcon muscle={muscle} className="w-4 h-4 text-blaze-500" />
+            {muscle}
+          </p>
+          <button onClick={onClose} className="p-1.5 text-ink-400">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="text-ink-500 text-xs mb-4">Toca los que hagas ese día. Puedes marcar varios.</p>
+
+        <div className="space-y-2 mb-3">
+          {group.exercises.map((ex) => {
+            const selected = selectedNames.has(ex);
+            return (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => onToggle(ex)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-left transition-colors ${
+                  selected
+                    ? "bg-blaze-gradient text-white shadow-blaze"
+                    : "bg-ink-800 text-ink-200 active:bg-ink-700"
+                }`}
+              >
+                <span>{ex}</span>
+                {selected && <Check className="w-4 h-4 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {showCustom ? (
+          <form onSubmit={submitCustom} className="flex items-center gap-2 mb-4">
+            <input
+              autoFocus
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              placeholder="Nombre del ejercicio"
+              className="input-field flex-1 text-sm"
+            />
+            <button
+              type="submit"
+              className="px-4 py-3 bg-blaze-gradient rounded-xl text-white text-xs font-heading uppercase tracking-wide shrink-0"
+            >
+              Añadir
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowCustom(true)}
+            className="w-full py-2.5 mb-4 text-blaze-500 font-heading uppercase text-xs tracking-wide border border-dashed border-ink-700 rounded-xl active:bg-ink-800/50"
+          >
+            + Otro ejercicio
+          </button>
+        )}
+
+        <button onClick={onClose} className="btn-primary w-full">
+          Listo
+        </button>
+      </motion.div>
+    </motion.div>
   );
 }
 
