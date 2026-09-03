@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, ChevronDown, Save, Loader2, Share2, X, Inbox, Check, Users } from "lucide-react";
+import { Trash2, ChevronDown, Save, Loader2, Share2, X, Inbox, Check, Users } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   updateRoutine,
@@ -21,12 +21,16 @@ const CUSTOM = "__custom__";
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 let rowId = 0;
-function newRow(ex) {
+function newRow(ex, muscle) {
   rowId += 1;
   const name = ex?.name || "";
   return {
     id: rowId,
     name,
+    // El músculo se fija al crear la fila (al tocar su icono, o al cargar
+    // una rutina guardada/importada) y decide qué lista de ejercicios
+    // ofrece el desplegable de esa fila.
+    muscle: muscle || (name ? EXERCISE_TO_MUSCLE[name] : undefined),
     custom: !!name && !COMMON_EXERCISES.includes(name),
     sets: String(ex?.sets ?? 4),
     reps: String(ex?.reps ?? 10),
@@ -35,10 +39,12 @@ function newRow(ex) {
 
 // Músculos únicos que se entrenan ese día, para la fila de iconos junto al
 // nombre del día (limitado a 4 para que quepan sin desbordar en móvil).
+// Cuenta el músculo en cuanto se añade la fila (aunque el ejercicio en sí
+// todavía no esté elegido), así el resumen del día es inmediato.
 function dayMuscles(rows) {
   const names = new Set();
   for (const row of rows) {
-    const muscle = EXERCISE_TO_MUSCLE[row.name];
+    const muscle = row.muscle || EXERCISE_TO_MUSCLE[row.name];
     if (muscle) names.add(muscle);
   }
   return [...names].slice(0, 4);
@@ -83,8 +89,8 @@ export default function Routine() {
   function patchRow(day, id, patch) {
     setDays((d) => ({ ...d, [day]: d[day].map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
   }
-  function addRow(day) {
-    setDays((d) => ({ ...d, [day]: [...d[day], newRow()] }));
+  function addRow(day, muscle) {
+    setDays((d) => ({ ...d, [day]: [...d[day], newRow(undefined, muscle)] }));
   }
   function removeRow(day, id) {
     setDays((d) => ({ ...d, [day]: d[day].filter((r) => r.id !== id) }));
@@ -137,7 +143,7 @@ export default function Routine() {
   const hasSavedRoutine = countExercises(profile?.routine) > 0;
 
   return (
-    <PageTransition className="px-5 pt-8 pb-8 max-w-md mx-auto">
+    <PageTransition className="px-5 pt-[calc(env(safe-area-inset-top)+2rem)] pb-8 max-w-md mx-auto">
       <div className="flex items-start justify-between mb-1">
         <h1 className="font-heading text-2xl font-semibold uppercase tracking-wide">Tu rutina</h1>
         <button
@@ -242,7 +248,7 @@ export default function Routine() {
                         <div key={row.id} className="bg-ink-800/60 rounded-2xl p-3">
                           <div className="flex items-center gap-2 mb-2">
                             <div className="w-8 h-8 rounded-lg bg-blaze-500/15 flex items-center justify-center shrink-0">
-                              <MuscleIcon exercise={row.name} className="w-4 h-4 text-blaze-500" />
+                              <MuscleIcon muscle={row.muscle} exercise={row.name} className="w-4 h-4 text-blaze-500" />
                             </div>
                             <div className="relative flex-1 min-w-0">
                               <select
@@ -255,17 +261,27 @@ export default function Routine() {
                                 className="input-field w-full appearance-none pr-9 py-2.5 text-sm"
                               >
                                 <option value="" disabled>
-                                  Elige un ejercicio
+                                  Elige un ejercicio{row.muscle ? ` de ${row.muscle.toLowerCase()}` : ""}
                                 </option>
-                                {MUSCLE_GROUPS.map((group) => (
-                                  <optgroup key={group.name} label={group.name}>
-                                    {group.exercises.map((ex) => (
-                                      <option key={ex} value={ex}>
-                                        {ex}
-                                      </option>
+                                {row.muscle ? (
+                                  MUSCLE_GROUPS.find((g) => g.name === row.muscle)?.exercises.map((ex) => (
+                                    <option key={ex} value={ex}>
+                                      {ex}
+                                    </option>
+                                  ))
+                                ) : (
+                                  <>
+                                    {MUSCLE_GROUPS.map((group) => (
+                                      <optgroup key={group.name} label={group.name}>
+                                        {group.exercises.map((ex) => (
+                                          <option key={ex} value={ex}>
+                                            {ex}
+                                          </option>
+                                        ))}
+                                      </optgroup>
                                     ))}
-                                  </optgroup>
-                                ))}
+                                  </>
+                                )}
                                 <option value={CUSTOM}>Otro ejercicio…</option>
                               </select>
                               <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -320,12 +336,27 @@ export default function Routine() {
                         </div>
                       ))}
 
-                      <button
-                        onClick={() => addRow(day)}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 text-blaze-500 font-heading uppercase text-xs tracking-wide border border-dashed border-ink-700 rounded-xl active:bg-ink-800/50"
-                      >
-                        <Plus className="w-4 h-4" /> Añadir ejercicio
-                      </button>
+                      <div>
+                        <p className="text-[10px] text-ink-500 uppercase tracking-wide text-center mb-2">
+                          Añadir ejercicio de...
+                        </p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {MUSCLE_GROUPS.map((group) => (
+                            <button
+                              key={group.name}
+                              type="button"
+                              onClick={() => addRow(day, group.name)}
+                              aria-label={`Añadir ejercicio de ${group.name}`}
+                              className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-ink-800/60 text-ink-400 active:bg-blaze-500/15 active:text-blaze-500"
+                            >
+                              <MuscleIcon muscle={group.name} className="w-4 h-4" />
+                              <span className="text-[9px] font-heading uppercase tracking-wide leading-none">
+                                {group.name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 )}

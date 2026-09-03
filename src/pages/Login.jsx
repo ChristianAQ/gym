@@ -81,7 +81,7 @@ export default function Login() {
   }
 
   return (
-    <PageTransition className="min-h-screen flex flex-col justify-center px-6 py-10">
+    <PageTransition className="min-h-screen flex flex-col justify-center px-6 pt-[calc(env(safe-area-inset-top)+2.5rem)] pb-10">
       <div className="max-w-sm mx-auto w-full">
         <motion.div
           initial={{ scale: 0.85, opacity: 0 }}

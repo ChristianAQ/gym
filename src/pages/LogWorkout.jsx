@@ -108,7 +108,10 @@ export default function LogWorkout() {
   }
 
   return (
-    <PageTransition variant="slide-up" className="min-h-screen bg-ink-950 flex flex-col">
+    <PageTransition
+      variant="slide-up"
+      className="min-h-screen bg-ink-950 flex flex-col pt-[env(safe-area-inset-top)]"
+    >
       <div className="flex items-center justify-between px-5 pt-8 pb-4">
         <h1 className="font-heading text-xl font-semibold uppercase tracking-wide">Registrar entrenamiento</h1>
         <button onClick={() => navigate(-1)} className="p-2 text-ink-400">

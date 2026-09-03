@@ -97,7 +97,7 @@ export default function Leaderboard() {
   }, [people, tab, exercise]);
 
   return (
-    <PageTransition className="px-5 pt-8 max-w-md mx-auto">
+    <PageTransition className="px-5 pt-[calc(env(safe-area-inset-top)+2rem)] max-w-md mx-auto">
       <div className="flex items-center justify-between mb-5">
         <h1 className="font-heading text-2xl font-semibold uppercase tracking-wide">Ranking</h1>
         <button onClick={load} className="p-2 text-ink-400 active:text-blaze-500">

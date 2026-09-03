@@ -23,7 +23,7 @@ export default function Dashboard() {
   const firstName = displayName.split(" ")[0];
 
   return (
-    <PageTransition className="px-5 pt-8 max-w-md mx-auto">
+    <PageTransition className="px-5 pt-[calc(env(safe-area-inset-top)+2rem)] max-w-md mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-ink-400 text-sm">Hola,</p>

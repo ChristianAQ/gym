@@ -25,11 +25,17 @@ body,
 body {
   background-color: #0b0b0d;
   background-image: radial-gradient(circle at 15% -10%, rgba(255, 92, 0, 0.16), transparent 55%);
-  /* En iOS, "add to home screen" con status bar translúcida dibuja el
-     contenido debajo del notch/Dynamic Island; este hueco lo compensa. */
-  padding-top: env(safe-area-inset-top);
   overscroll-behavior-y: none;
 }
+
+/* En iOS, "add to home screen" con status bar translúcida dibuja el
+   contenido debajo del notch/Dynamic Island. En vez de un padding global en
+   <body> (que en las páginas de altura mínima 100vh — Login y Registrar
+   entrenamiento — sumaba de más y dejaba un hueco de scroll de sobra al
+   final), cada página reserva ese hueco en su propio elemento raíz vía la
+   clase pt-[calc(env(safe-area-inset-top)+…)], que con box-sizing: border-box
+   (el reset de Tailwind) queda contenida dentro de su min-height en vez de
+   añadirse por encima. */
 
 ::selection {
   background: #ff5c00;
