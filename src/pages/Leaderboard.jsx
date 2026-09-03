@@ -10,7 +10,7 @@ import {
   CalendarCheck,
   BarChart3,
   AlertTriangle,
-  ChevronDown,
+  Check,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { listFriendProfiles } from "../lib/firestore";
@@ -40,6 +40,7 @@ export default function Leaderboard() {
   const [tab, setTab] = useState("racha");
   const [exercise, setExercise] = useState(KEY_EXERCISES[0]);
   const [rival, setRival] = useState(null);
+  const [pickerMuscle, setPickerMuscle] = useState(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -140,35 +141,35 @@ export default function Leaderboard() {
       </div>
 
       {tab === "records" && (
-        <div className="relative mb-4">
-          <MuscleIcon
-            exercise={exercise}
-            className="w-4 h-4 text-blaze-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-          />
-          <select
-            value={exercise}
-            onChange={(e) => setExercise(e.target.value)}
-            className="input-field w-full appearance-none pl-10 pr-10"
-          >
-            <optgroup label="Ejercicios clave">
-              {KEY_EXERCISES.map((ex) => (
-                <option key={ex} value={ex}>
-                  {ex}
-                </option>
-              ))}
-            </optgroup>
-            {MUSCLE_GROUPS.map((group) => (
-              <optgroup key={group.name} label={group.name}>
-                {group.exercises.map((ex) => (
-                  <option key={ex} value={ex}>
-                    {ex}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </div>
+        <>
+          <div className="flex items-center gap-2 mb-3">
+            <MuscleIcon exercise={exercise} className="w-4 h-4 text-blaze-500 shrink-0" />
+            <span className="text-sm text-ink-200 font-medium truncate">{exercise}</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            {MUSCLE_GROUPS.map((group) => {
+              const active = group.exercises.includes(exercise);
+              return (
+                <button
+                  key={group.name}
+                  type="button"
+                  onClick={() => setPickerMuscle(group.name)}
+                  aria-label={`Elegir ejercicio de ${group.name}`}
+                  className={`flex flex-col items-center gap-1 py-2.5 rounded-xl transition-colors ${
+                    active
+                      ? "bg-blaze-gradient text-white shadow-blaze"
+                      : "bg-ink-800/60 text-ink-400 active:bg-blaze-500/15 active:text-blaze-500"
+                  }`}
+                >
+                  <MuscleIcon muscle={group.name} className="w-4 h-4" />
+                  <span className="text-[9px] font-heading uppercase tracking-wide leading-none">
+                    {group.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {loadError && (
@@ -226,7 +227,78 @@ export default function Leaderboard() {
       <AnimatePresence>
         {rival && <CompareModal me={me} rival={rival} onClose={() => setRival(null)} />}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {pickerMuscle && (
+          <RecordsPickerSheet
+            muscle={pickerMuscle}
+            selected={exercise}
+            onSelect={(name) => {
+              setExercise(name);
+              setPickerMuscle(null);
+            }}
+            onClose={() => setPickerMuscle(null)}
+          />
+        )}
+      </AnimatePresence>
     </PageTransition>
+  );
+}
+
+// Hoja de selección única para elegir de qué ejercicio de un músculo se
+// compara el récord (mismo patrón visual que la hoja de la Rutina, pero
+// tocar un ejercicio elige y cierra en vez de sumarlo a una lista).
+function RecordsPickerSheet({ muscle, selected, onSelect, onClose }) {
+  const group = MUSCLE_GROUPS.find((g) => g.name === muscle);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-ink-900 border-t border-ink-800 rounded-t-3xl p-6 pb-10 max-h-[75vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <p className="font-heading uppercase tracking-wide flex items-center gap-2">
+            <MuscleIcon muscle={muscle} className="w-4 h-4 text-blaze-500" />
+            {muscle}
+          </p>
+          <button onClick={onClose} className="p-1.5 text-ink-400">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {group.exercises.map((ex) => {
+            const isSelected = ex === selected;
+            return (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => onSelect(ex)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-left transition-colors ${
+                  isSelected
+                    ? "bg-blaze-gradient text-white shadow-blaze"
+                    : "bg-ink-800 text-ink-200 active:bg-ink-700"
+                }`}
+              >
+                <span>{ex}</span>
+                {isSelected && <Check className="w-4 h-4 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

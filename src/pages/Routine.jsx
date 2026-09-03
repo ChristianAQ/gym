@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, ChevronDown, Save, Loader2, Share2, X, Inbox, Check, Users } from "lucide-react";
+import { Trash2, ChevronDown, Save, Loader2, Share2, X, Inbox, Check, Users, Moon } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   updateRoutine,
+  updateRoutineDay,
   listFriendProfiles,
   shareRoutine,
   listIncomingRoutines,
@@ -82,6 +83,7 @@ function countExercises(routine) {
 export default function Routine() {
   const { user, profile } = useAuth();
   const [days, setDays] = useState(() => buildInitialDays(profile?.routine));
+  const [restDays, setRestDays] = useState(() => ({ ...(profile?.routine?.restDays || {}) }));
   const [openDay, setOpenDay] = useState(new Date().getDay());
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -90,6 +92,8 @@ export default function Routine() {
   const [importedMsg, setImportedMsg] = useState("");
   const [pickerMuscle, setPickerMuscle] = useState(null); // { day, muscle } | null
   const [collapsedGroups, setCollapsedGroups] = useState({}); // `${day}:${muscle}` -> bool
+  const [savingDay, setSavingDay] = useState(null);
+  const [savedDay, setSavedDay] = useState(null);
 
   const loadIncoming = useCallback(async () => {
     if (!user) return;
@@ -128,13 +132,24 @@ export default function Routine() {
     const key = `${day}:${muscle}`;
     setCollapsedGroups((c) => ({ ...c, [key]: !c[key] }));
   }
+  // Marcar un día como descanso vacía sus ejercicios (un día de descanso no
+  // lleva ejercicios); quitarle la marca solo permite volver a añadir.
+  function toggleRestDay(day) {
+    const turningOn = !restDays[day];
+    setRestDays((r) => ({ ...r, [day]: turningOn }));
+    if (turningOn) setDays((d) => ({ ...d, [day]: [] }));
+  }
+
+  function dayExercises(day) {
+    return days[day]
+      .filter((r) => r.name.trim())
+      .map((r) => ({ name: r.name.trim(), sets: Number(r.sets) || 0, reps: Number(r.reps) || 0 }));
+  }
 
   function currentRoutine() {
-    const routine = {};
+    const routine = { restDays: { ...restDays } };
     for (const day of DAY_ORDER) {
-      routine[day] = days[day]
-        .filter((r) => r.name.trim())
-        .map((r) => ({ name: r.name.trim(), sets: Number(r.sets) || 0, reps: Number(r.reps) || 0 }));
+      routine[day] = dayExercises(day);
     }
     return routine;
   }
@@ -151,8 +166,21 @@ export default function Routine() {
     }
   }
 
+  async function handleSaveDay(day) {
+    setSavingDay(day);
+    setSavedDay(null);
+    try {
+      await updateRoutineDay(user.uid, day, dayExercises(day), !!restDays[day]);
+      setSavedDay(day);
+      setTimeout(() => setSavedDay((d) => (d === day ? null : d)), 2000);
+    } finally {
+      setSavingDay(null);
+    }
+  }
+
   async function handleImport(item) {
     setDays(buildInitialDays(item.routine));
+    setRestDays({ ...(item.routine?.restDays || {}) });
     setOpenDay(new Date().getDay());
     setImportedMsg(`Rutina de ${item.fromName} cargada. Revísala y dale a "Guardar rutina" para confirmarla.`);
     setTimeout(() => setImportedMsg(""), 5000);
@@ -251,13 +279,21 @@ export default function Routine() {
               >
                 <span className="font-heading uppercase tracking-wide">{WEEKDAYS_FULL_ES[day]}</span>
                 <div className="flex items-center gap-2">
-                  {dayMuscles(exercises).map((muscle) => (
-                    <MuscleIcon key={muscle} muscle={muscle} className="w-3.5 h-3.5 text-ink-500 shrink-0" />
-                  ))}
-                  {exercises.length > 0 && (
-                    <span className="text-xs bg-blaze-500/15 text-blaze-400 px-2 py-0.5 rounded-full shrink-0">
-                      {exercises.length}
+                  {restDays[day] ? (
+                    <span className="flex items-center gap-1 text-xs text-ink-500 bg-ink-800/60 px-2 py-0.5 rounded-full shrink-0">
+                      <Moon className="w-3 h-3" /> Descanso
                     </span>
+                  ) : (
+                    <>
+                      {dayMuscles(exercises).map((muscle) => (
+                        <MuscleIcon key={muscle} muscle={muscle} className="w-3.5 h-3.5 text-ink-500 shrink-0" />
+                      ))}
+                      {exercises.length > 0 && (
+                        <span className="text-xs bg-blaze-500/15 text-blaze-400 px-2 py-0.5 rounded-full shrink-0">
+                          {exercises.length}
+                        </span>
+                      )}
+                    </>
                   )}
                   <ChevronDown
                     className={`w-4 h-4 text-ink-400 transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`}
@@ -274,10 +310,20 @@ export default function Routine() {
                     className="overflow-hidden"
                   >
                     <div className="px-4 pb-4 space-y-4">
-                      <div>
-                        <p className="text-[10px] text-ink-500 uppercase tracking-wide text-center mb-2">
-                          Añadir ejercicio de...
-                        </p>
+                      <button
+                        type="button"
+                        onClick={() => toggleRestDay(day)}
+                        className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-heading uppercase text-xs tracking-wide transition-colors ${
+                          restDays[day]
+                            ? "bg-blaze-gradient text-white shadow-blaze"
+                            : "bg-ink-800/60 text-ink-400 active:bg-ink-800"
+                        }`}
+                      >
+                        <Moon className="w-4 h-4" />
+                        {restDays[day] ? "Es día de descanso" : "Marcar como descanso"}
+                      </button>
+
+                      {!restDays[day] && (
                         <div className="grid grid-cols-4 gap-2">
                           {MUSCLE_GROUPS.map((group) => {
                             const active = usedMuscles.has(group.name);
@@ -301,15 +347,9 @@ export default function Routine() {
                             );
                           })}
                         </div>
-                      </div>
-
-                      {exercises.length === 0 && (
-                        <p className="text-ink-600 text-sm text-center py-2">
-                          Día de descanso — sin ejercicios todavía.
-                        </p>
                       )}
 
-                      {groupedRows.map((group) => {
+                      {!restDays[day] && groupedRows.map((group) => {
                         const collapseKey = `${day}:${group.name}`;
                         const collapsed = !!collapsedGroups[collapseKey];
                         return (
@@ -433,6 +473,20 @@ export default function Routine() {
                         </div>
                         );
                       })}
+
+                      <button
+                        type="button"
+                        onClick={() => handleSaveDay(day)}
+                        disabled={savingDay === day}
+                        className="btn-ghost w-full flex items-center justify-center gap-2 text-sm disabled:opacity-60"
+                      >
+                        {savingDay === day ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        {savedDay === day ? "¡Día guardado!" : `Guardar ${WEEKDAYS_FULL_ES[day].toLowerCase()}`}
+                      </button>
                     </div>
                   </motion.div>
                 )}

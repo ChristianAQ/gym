@@ -110,10 +110,22 @@ export async function updateProfileData(uid, { displayName, photoURL }) {
 }
 
 // La rutina es una plantilla semanal: routine[díaDeLaSemana] (0=domingo ...
-// 6=sábado, igual que Date#getDay()) -> [{ name, sets, reps }]. Se guarda
-// entera de una vez porque es pequeña y se edita como un todo.
+// 6=sábado, igual que Date#getDay()) -> [{ name, sets, reps }], más
+// routine.restDays[díaDeLaSemana] -> boolean para los días marcados
+// explícitamente como descanso. Se guarda entera de una vez porque es
+// pequeña y se edita como un todo.
 export async function updateRoutine(uid, routine) {
   await updateDoc(userRef(uid), { routine });
+}
+
+// Guarda solo un día (rutas con puntos en Firestore actualizan esa clave
+// del mapa sin tocar el resto de la semana), para poder ir guardando según
+// se termina cada día en vez de esperar a la semana entera.
+export async function updateRoutineDay(uid, day, exercises, isRest) {
+  await updateDoc(userRef(uid), {
+    [`routine.${day}`]: exercises,
+    [`routine.restDays.${day}`]: isRest,
+  });
 }
 
 // Amistad mutua: cada lado puede escribir en la subcolección `friends` del
