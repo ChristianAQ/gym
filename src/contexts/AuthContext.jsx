@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -9,7 +9,7 @@ import {
   resetPassword,
   logout as firebaseLogout,
 } from "../firebase";
-import { ensureUserProfile, subscribeToUser } from "../lib/firestore";
+import { ensureUserProfile, ensureRoutinesMigrated, subscribeToUser } from "../lib/firestore";
 
 export const AuthContext = createContext(null);
 
@@ -18,6 +18,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const migratingRef = useRef(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -40,7 +41,19 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!user) return undefined;
-    return subscribeToUser(user.uid, setProfile);
+    return subscribeToUser(user.uid, (p) => {
+      setProfile(p);
+      // Perfiles de antes de soportar varias rutinas no tienen `routines`
+      // todavía; se convierten una sola vez (ensureRoutinesMigrated es
+      // idempotente, pero el guard evita disparar varias escrituras a la
+      // vez mientras la primera todavía no ha llegado a Firestore).
+      if (p && p.routines === undefined && !migratingRef.current) {
+        migratingRef.current = true;
+        ensureRoutinesMigrated(user.uid, p).finally(() => {
+          migratingRef.current = false;
+        });
+      }
+    });
   }, [user]);
 
   async function logout() {

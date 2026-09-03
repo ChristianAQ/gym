@@ -27,12 +27,19 @@ function newRow(ex, muscle) {
   };
 }
 
-// Si hoy toca algo en la rutina, se rellenan los ejercicios de esa
+// Los días de la semana viven dentro de la rutina activa del usuario
+// (profile.routines[activeRoutineId].days), no de una sola rutina plana.
+function activeRoutineDays(profile) {
+  const id = profile?.activeRoutineId;
+  return id ? profile?.routines?.[id]?.days : undefined;
+}
+
+// Si hoy toca algo en la rutina activa, se rellenan los ejercicios de esa
 // plantilla (nombre, series y reps objetivo) y solo falta el peso — pero
 // sigue siendo una lista normal: se puede añadir, quitar o cambiar
 // cualquier fila sin que eso afecte a la rutina guardada.
-function initialRows(routine) {
-  const today = routine?.[new Date().getDay()];
+function initialRows(days) {
+  const today = days?.[new Date().getDay()];
   if (today && today.length > 0) return today.map((ex) => newRow(ex));
   return [];
 }
@@ -40,8 +47,8 @@ function initialRows(routine) {
 export default function LogWorkout() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const [rows, setRows] = useState(() => initialRows(profile?.routine));
-  const [prefilled] = useState(() => Boolean(profile?.routine?.[new Date().getDay()]?.length));
+  const [rows, setRows] = useState(() => initialRows(activeRoutineDays(profile)));
+  const [prefilled] = useState(() => Boolean(activeRoutineDays(profile)?.[new Date().getDay()]?.length));
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);

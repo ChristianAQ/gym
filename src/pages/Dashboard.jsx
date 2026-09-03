@@ -1,18 +1,21 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Trophy, Dumbbell, X } from "lucide-react";
+import { Flame, Trophy, Dumbbell, X, Moon, ClipboardList, ChevronRight } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { getWorkoutsByDate } from "../lib/firestore";
-import { formatFullDate, isToday } from "../lib/date";
+import { getWorkoutsByDate, updateWeeklyGoal } from "../lib/firestore";
+import { formatFullDate, isToday, countThisWeek } from "../lib/date";
+import { EXERCISE_TO_MUSCLE } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 import Calendar from "../components/Calendar";
 import Avatar from "../components/Avatar";
+import MuscleIcon from "../components/MuscleIcon";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState(null);
+  const [editingGoal, setEditingGoal] = useState(false);
 
   const streak = profile?.currentStreak ?? 0;
   const best = profile?.bestStreak ?? 0;
@@ -21,6 +24,23 @@ export default function Dashboard() {
   const displayName = profile?.displayName || user?.displayName || "Atleta";
   const photoURL = profile?.photoURL || user?.photoURL;
   const firstName = displayName.split(" ")[0];
+
+  const activeRoutine = profile?.activeRoutineId ? profile?.routines?.[profile.activeRoutineId] : null;
+  const todayIdx = new Date().getDay();
+  const todayIsRest = !!activeRoutine?.restDays?.[todayIdx];
+  const todayExercises = activeRoutine?.days?.[todayIdx] || [];
+  const todayMuscles = [...new Set(todayExercises.map((ex) => EXERCISE_TO_MUSCLE[ex.name]).filter(Boolean))].slice(
+    0,
+    4
+  );
+
+  const weeklyGoal = profile?.weeklyGoal ?? null;
+  const weekCount = countThisWeek(workoutDates);
+
+  async function handleSetGoal(n) {
+    setEditingGoal(false);
+    await updateWeeklyGoal(user.uid, n);
+  }
 
   return (
     <PageTransition className="px-5 pt-8 max-w-md mx-auto">
@@ -57,12 +77,117 @@ export default function Dashboard() {
         </p>
       </motion.div>
 
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.07 }}
+        className="card p-4 mb-5"
+      >
+        <div className="flex items-center justify-between mb-2">
+          <p className="font-heading uppercase text-xs tracking-wide text-ink-400">Rutina activa</p>
+          <button
+            onClick={() => navigate("/routine")}
+            className="text-blaze-500 text-xs font-heading uppercase tracking-wide flex items-center gap-0.5"
+          >
+            {activeRoutine ? "Cambiar" : "Elegir"} <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+        {activeRoutine ? (
+          <>
+            <p className="font-heading text-lg font-semibold mb-2 truncate">{activeRoutine.name}</p>
+            {todayIsRest ? (
+              <span className="inline-flex items-center gap-1.5 text-sm text-ink-400 bg-ink-800/60 px-3 py-1.5 rounded-full">
+                <Moon className="w-4 h-4" /> Hoy toca descanso
+              </span>
+            ) : todayExercises.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <div className="flex -space-x-1">
+                  {todayMuscles.map((m) => (
+                    <div
+                      key={m}
+                      className="w-7 h-7 rounded-full bg-ink-800 border-2 border-ink-900 flex items-center justify-center"
+                    >
+                      <MuscleIcon muscle={m} className="w-3.5 h-3.5 text-blaze-500" />
+                    </div>
+                  ))}
+                </div>
+                <span className="text-sm text-ink-300">
+                  {todayExercises.length} {todayExercises.length === 1 ? "ejercicio" : "ejercicios"} hoy
+                </span>
+              </div>
+            ) : (
+              <p className="text-ink-500 text-sm">Sin ejercicios definidos para hoy.</p>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blaze-500/15 flex items-center justify-center shrink-0">
+              <ClipboardList className="w-5 h-5 text-blaze-500" />
+            </div>
+            <p className="text-ink-400 text-sm">Todavía no tienes una rutina activa.</p>
+          </div>
+        )}
+      </motion.div>
+
       <div className="grid grid-cols-2 gap-4 mb-5">
         <StatCard icon={Trophy} label="Mejor racha" value={best} onClick={() => navigate("/leaderboard")} />
         <StatCard icon={Dumbbell} label="Récords" value={prCount} />
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.12 }}
+        className="card p-4 mb-5"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <p className="font-heading uppercase text-xs tracking-wide text-ink-400">Objetivo semanal</p>
+          {!editingGoal && (
+            <button
+              onClick={() => setEditingGoal(true)}
+              className="text-blaze-500 text-xs font-heading uppercase tracking-wide"
+            >
+              {weeklyGoal ? "Cambiar" : "Elegir"}
+            </button>
+          )}
+        </div>
+
+        {editingGoal ? (
+          <div className="flex gap-1.5">
+            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+              <button
+                key={n}
+                onClick={() => handleSetGoal(n)}
+                className={`flex-1 py-2 rounded-lg text-sm font-heading transition-colors ${
+                  weeklyGoal === n
+                    ? "bg-blaze-gradient text-white shadow-blaze"
+                    : "bg-ink-800 text-ink-400 active:bg-ink-700"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        ) : weeklyGoal ? (
+          <>
+            <div className="flex items-end gap-2 mb-2">
+              <span className="font-heading text-3xl font-semibold">{Math.min(weekCount, weeklyGoal)}</span>
+              <span className="text-ink-500 mb-1">
+                / {weeklyGoal} {weeklyGoal === 1 ? "día" : "días"} esta semana
+              </span>
+            </div>
+            <div className="flex gap-1">
+              {Array.from({ length: weeklyGoal }).map((_, i) => (
+                <div key={i} className={`flex-1 h-1.5 rounded-full ${i < weekCount ? "bg-blaze-gradient" : "bg-ink-800"}`} />
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-ink-500 text-sm">Elige cuántos días a la semana quieres entrenar.</p>
+        )}
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
         <Calendar workoutDates={workoutDates} onSelectDay={setSelectedDay} />
       </motion.div>
 

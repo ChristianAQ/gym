@@ -62,6 +62,21 @@ export function formatFullDate(key) {
   return `${weekday}, ${date.getDate()} de ${MONTHS_ES[date.getMonth()].toLowerCase()}`;
 }
 
+// Clave "YYYY-MM-DD" del lunes de la semana de `date` (semana lunes-domingo,
+// igual que el calendario y la rejilla de la rutina).
+export function startOfWeekKey(date = new Date()) {
+  const offset = (date.getDay() + 6) % 7; // 0 = lunes
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - offset);
+  return dateKey(monday);
+}
+
+// Cuántas fechas de `workoutDates` caen en la semana actual (lunes-hoy).
+export function countThisWeek(workoutDates) {
+  const start = startOfWeekKey();
+  return (workoutDates || []).filter((key) => key >= start).length;
+}
+
 // Cuadrícula de un mes: array de semanas, cada una con 7 celdas
 // ({ key, day, inMonth } | null para huecos fuera de mes).
 export function monthGrid(year, month) {

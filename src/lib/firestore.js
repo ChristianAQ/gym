@@ -4,6 +4,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  deleteField,
   onSnapshot,
   collection,
   addDoc,
@@ -36,10 +37,41 @@ export async function ensureUserProfile(user) {
     workoutDates: [],
     totalVolume: 0,
     prs: {},
-    routine: {},
+    routines: {},
+    activeRoutineId: null,
+    weeklyGoal: null,
   };
   await setDoc(ref, profile);
   return profile;
+}
+
+// Los perfiles creados antes de soportar varias rutinas guardaban una sola
+// plantilla plana en `routine`. La primera vez que se carga un perfil así
+// se convierte en una entrada de `routines` (llamada "Mi rutina") y se deja
+// como activa, para no perder lo que el usuario ya tenía configurado.
+// Idempotente: si `routines` ya existe (aunque esté vacío) no hace nada.
+export async function ensureRoutinesMigrated(uid, profile) {
+  if (!profile || profile.routines !== undefined) return;
+
+  const legacy = profile.routine || {};
+  const days = {};
+  let hasExercises = false;
+  for (const key of Object.keys(legacy)) {
+    if (key === "restDays") continue;
+    days[key] = legacy[key] || [];
+    if (days[key].length > 0) hasExercises = true;
+  }
+  const hasRestDays = legacy.restDays && Object.keys(legacy.restDays).length > 0;
+
+  if (hasExercises || hasRestDays) {
+    const id = `routine_${Date.now()}`;
+    await updateDoc(userRef(uid), {
+      routines: { [id]: { name: "Mi rutina", days, restDays: legacy.restDays || {} } },
+      activeRoutineId: id,
+    });
+  } else {
+    await updateDoc(userRef(uid), { routines: {}, activeRoutineId: null });
+  }
 }
 
 export function subscribeToUser(uid, callback) {
@@ -109,23 +141,68 @@ export async function updateProfileData(uid, { displayName, photoURL }) {
   await updateDoc(userRef(uid), { displayName, photoURL: photoURL || null });
 }
 
-// La rutina es una plantilla semanal: routine[díaDeLaSemana] (0=domingo ...
-// 6=sábado, igual que Date#getDay()) -> [{ name, sets, reps }], más
-// routine.restDays[díaDeLaSemana] -> boolean para los días marcados
-// explícitamente como descanso. Se guarda entera de una vez porque es
-// pequeña y se edita como un todo.
-export async function updateRoutine(uid, routine) {
-  await updateDoc(userRef(uid), { routine });
+// Un usuario puede tener varias rutinas guardadas (routines[routineId]) y
+// una marcada como activa (activeRoutineId) — esa es la que rellena el
+// registro de entrenamiento y se muestra en el inicio. Cada rutina es una
+// plantilla semanal: days[díaDeLaSemana] (0=domingo ... 6=sábado, igual
+// que Date#getDay()) -> [{ name, sets, reps }], más restDays[día] ->
+// boolean para los días marcados explícitamente como descanso.
+export async function createRoutine(uid, name) {
+  const id = `routine_${Date.now()}`;
+  const days = {};
+  for (let d = 0; d < 7; d++) days[d] = [];
+  await updateDoc(userRef(uid), {
+    [`routines.${id}`]: { name, days, restDays: {} },
+  });
+  return id;
+}
+
+export async function renameRoutine(uid, routineId, name) {
+  await updateDoc(userRef(uid), { [`routines.${routineId}.name`]: name });
+}
+
+// nextActiveId solo hace falta cuando se borra la rutina activa: el
+// llamante decide cuál pasa a ser la nueva activa (u null si no queda
+// ninguna) para no dejar activeRoutineId apuntando a una rutina borrada.
+export async function deleteRoutine(uid, routineId, nextActiveId) {
+  const updates = { [`routines.${routineId}`]: deleteField() };
+  if (nextActiveId !== undefined) updates.activeRoutineId = nextActiveId;
+  await updateDoc(userRef(uid), updates);
+}
+
+export async function setActiveRoutine(uid, routineId) {
+  await updateDoc(userRef(uid), { activeRoutineId: routineId });
+}
+
+// Guarda la semana entera de una rutina de una vez (se edita como un todo
+// antes de tener guardado por día).
+export async function updateRoutineDays(uid, routineId, days, restDays) {
+  await updateDoc(userRef(uid), {
+    [`routines.${routineId}.days`]: days,
+    [`routines.${routineId}.restDays`]: restDays,
+  });
 }
 
 // Guarda solo un día (rutas con puntos en Firestore actualizan esa clave
 // del mapa sin tocar el resto de la semana), para poder ir guardando según
 // se termina cada día en vez de esperar a la semana entera.
-export async function updateRoutineDay(uid, day, exercises, isRest) {
+export async function updateRoutineDay(uid, routineId, day, exercises, isRest) {
   await updateDoc(userRef(uid), {
-    [`routine.${day}`]: exercises,
-    [`routine.restDays.${day}`]: isRest,
+    [`routines.${routineId}.days.${day}`]: exercises,
+    [`routines.${routineId}.restDays.${day}`]: isRest,
   });
+}
+
+export async function updateWeeklyGoal(uid, goal) {
+  await updateDoc(userRef(uid), { weeklyGoal: goal });
+}
+
+// Añade una rutina recibida de un amigo como una rutina nueva propia (no
+// activa automáticamente, para no reemplazar sin querer la que ya usas).
+export async function importRoutine(uid, routineData) {
+  const id = `routine_${Date.now()}`;
+  await updateDoc(userRef(uid), { [`routines.${id}`]: routineData });
+  return id;
 }
 
 // Amistad mutua: cada lado puede escribir en la subcolección `friends` del
