@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, Trophy, User, Plus, ClipboardList } from "lucide-react";
+import { Home, Trophy, User, Plus, ClipboardList } from "./icons";
 
 const LEFT_TABS = [
   { to: "/", label: "Inicio", icon: Home },

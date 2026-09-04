@@ -1,4 +1,4 @@
-import { Flame } from "lucide-react";
+import { Flame } from "./icons";
 import { useAuth } from "../contexts/AuthContext";
 import { asset } from "../lib/asset";
 import { computeStreakStats } from "../lib/date";

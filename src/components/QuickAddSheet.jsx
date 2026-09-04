@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { X, Check } from "lucide-react";
+import { X, Check } from "./icons";
 import { MUSCLE_GROUPS } from "../lib/exercises";
 import MuscleIcon from "./MuscleIcon";
 

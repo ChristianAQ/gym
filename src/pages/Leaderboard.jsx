@@ -15,7 +15,7 @@ import {
   Moon,
   Copy,
   Loader2,
-} from "lucide-react";
+} from "../components/icons";
 import { useAuth } from "../contexts/AuthContext";
 import { listFriendProfiles, importRoutine } from "../lib/firestore";
 import { computeStreakStats, WEEKDAYS_FULL_ES } from "../lib/date";

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Dumbbell, X, Moon } from "lucide-react";
+import { Flame, Dumbbell, X, Moon } from "../components/icons";
 import { useAuth } from "../contexts/AuthContext";
 import { getWorkoutsByDate, updateWeeklyGoal } from "../lib/firestore";
 import { formatFullDate, isToday, countThisWeek, computeStreakStats } from "../lib/date";

@@ -1,4 +1,4 @@
-import { Shirt, ArrowUp, Zap, Waves, TrendingUp, Hand, Footprints, Triangle } from "lucide-react";
+import { Shirt, ArrowUp, Zap, Waves, TrendingUp, Hand, Footprints, Triangle } from "../components/icons";
 
 // Catálogo de ejercicios organizado por grupo muscular — se usa tanto en el
 // desplegable de la rutina y del registro diario (como <optgroup>, para que
