@@ -445,7 +445,8 @@ function FriendRoutineSheet({ uid, rival, onClose }) {
   async function handleCopy() {
     setCopying(true);
     try {
-      await importRoutine(uid, activeRoutine);
+      const routineData = { ...activeRoutine, name: `${activeRoutine.name} - ${rival.displayName}` };
+      await importRoutine(uid, routineData);
       setCopied(true);
     } finally {
       setCopying(false);

@@ -266,9 +266,10 @@ export default function Routine() {
   }
 
   async function handleImport(item) {
-    const routineData = item.routine?.days
-      ? item.routine
-      : { name: `Rutina de ${item.fromName}`, days: item.routine || {}, restDays: item.routine?.restDays || {} };
+    const days = item.routine?.days || item.routine || {};
+    const restDays = item.routine?.restDays || {};
+    const sourceName = item.routine?.name || "Rutina";
+    const routineData = { name: `${sourceName} - ${item.fromName}`, days, restDays };
     const id = await importRoutine(user.uid, routineData);
     setImportedMsg(`Rutina de ${item.fromName} añadida a tu lista. Actívala cuando quieras entrenarla.`);
     setTimeout(() => setImportedMsg(""), 5000);
