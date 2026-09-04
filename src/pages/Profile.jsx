@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Model from "react-body-highlighter";
 import { Copy, Check, UserPlus, LogOut, Dumbbell, CalendarCheck, Pencil, X, Loader2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { addFriend, updateProfileData } from "../lib/firestore";
 import { updateAuthProfile } from "../firebase";
-import { MUSCLE_GROUPS } from "../lib/exercises";
+import { MUSCLE_GROUPS, MUSCLE_TO_BODY_PARTS } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
 import MuscleIcon from "../components/MuscleIcon";
+
+// Rampa de color por frecuencia de PRs en ese músculo (1, 2, 3, 4+),
+// usando el mismo naranja de marca cada vez más intenso.
+const BODY_HIGHLIGHT_COLORS = ["#ff9c5c", "#ff7a2e", "#ff5c00", "#d44700"];
 
 // Agrupa los PRs por músculo (mismo catálogo que la rutina y el registro),
 // y deja aparte los que no encajen en ningún grupo (ejercicios
@@ -76,6 +81,9 @@ export default function Profile() {
   const prCount = Object.keys(prsMap).length;
   const prGroups = groupPRsByMuscle(prsMap);
   const totalWorkouts = profile?.workoutDates?.length ?? 0;
+  const bodyData = prGroups
+    .filter((g) => MUSCLE_TO_BODY_PARTS[g.name])
+    .map((g) => ({ name: g.name, muscles: MUSCLE_TO_BODY_PARTS[g.name], frequency: g.items.length }));
 
   return (
     <PageTransition className="px-5 pt-8 max-w-md mx-auto pb-6">
@@ -149,6 +157,35 @@ export default function Profile() {
           </motion.p>
         )}
       </form>
+
+      {bodyData.length > 0 && (
+        <div className="card p-5 mb-4">
+          <p className="font-heading uppercase text-xs tracking-wide text-ink-400 mb-3">Músculos trabajados</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col items-center">
+              <Model
+                type="anterior"
+                data={bodyData}
+                bodyColor="#1c1c20"
+                highlightedColors={BODY_HIGHLIGHT_COLORS}
+                style={{ width: "100%", maxWidth: "9rem", height: "18rem" }}
+              />
+              <span className="text-[10px] text-ink-500 uppercase tracking-wide mt-1">Frontal</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <Model
+                type="posterior"
+                data={bodyData}
+                bodyColor="#1c1c20"
+                highlightedColors={BODY_HIGHLIGHT_COLORS}
+                style={{ width: "100%", maxWidth: "9rem", height: "18rem" }}
+              />
+              <span className="text-[10px] text-ink-500 uppercase tracking-wide mt-1">Trasera</span>
+            </div>
+          </div>
+          <p className="text-ink-600 text-xs mt-3 text-center">Más naranja = más récords en ese músculo.</p>
+        </div>
+      )}
 
       {prGroups.length > 0 && (
         <div className="card p-5 mb-4">

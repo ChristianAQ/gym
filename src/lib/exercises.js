@@ -66,3 +66,33 @@ export const MUSCLE_ICONS = {
 export const EXERCISE_TO_MUSCLE = Object.fromEntries(
   MUSCLE_GROUPS.flatMap((g) => g.exercises.map((ex) => [ex, g.name]))
 );
+
+// Cada uno de mis 8 grupos musculares -> las "piezas" del modelo de cuerpo
+// de react-body-highlighter que le corresponden (puede ser más de una,
+// p. ej. "Pierna" cubre varios músculos de la librería). Algunas piezas
+// solo existen en la vista frontal (anterior) y otras solo en la trasera
+// (posterior) del modelo — ver ANTERIOR_MUSCLES/POSTERIOR_MUSCLES más abajo.
+export const MUSCLE_TO_BODY_PARTS = {
+  Pecho: ["chest"],
+  Hombro: ["front-deltoids", "back-deltoids"],
+  Tríceps: ["triceps"],
+  Espalda: ["upper-back", "lower-back"],
+  Bíceps: ["biceps"],
+  Antebrazo: ["forearm"],
+  Pierna: ["quadriceps", "hamstring", "calves", "gluteal", "adductor", "abductors"],
+  Trapecio: ["trapezius"],
+};
+
+// Inverso: pieza del modelo de cuerpo -> mi grupo muscular. Así, al tocar
+// cualquier región del cuerpo (p. ej. "hamstring" o "quadriceps"), se sabe
+// que corresponde al grupo "Pierna" sin importar cuál de sus piezas se tocó.
+export const BODY_PART_TO_MUSCLE = Object.fromEntries(
+  Object.entries(MUSCLE_TO_BODY_PARTS).flatMap(([muscle, parts]) => parts.map((part) => [part, muscle]))
+);
+
+// De mis 8 grupos, cuáles tienen alguna pieza visible/tocable en cada vista
+// del modelo (comprobado contra los datos SVG de la librería): Pecho y
+// Bíceps solo existen de frente; Espalda y Trapecio solo de espaldas: el
+// resto aparece en ambas vistas.
+export const ANTERIOR_MUSCLES = new Set(["Pecho", "Hombro", "Tríceps", "Bíceps", "Antebrazo", "Pierna"]);
+export const POSTERIOR_MUSCLES = new Set(["Hombro", "Tríceps", "Espalda", "Antebrazo", "Pierna", "Trapecio"]);

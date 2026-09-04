@@ -19,10 +19,11 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { listFriendProfiles, importRoutine } from "../lib/firestore";
 import { computeStreakStats, WEEKDAYS_FULL_ES } from "../lib/date";
-import { KEY_EXERCISES, MUSCLE_GROUPS } from "../lib/exercises";
+import { KEY_EXERCISES, MUSCLE_GROUPS, EXERCISE_TO_MUSCLE } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
 import MuscleIcon from "../components/MuscleIcon";
+import MuscleBodyPicker from "../components/MuscleBodyPicker";
 
 const RANK_STYLES = [
   "bg-blaze-gradient text-white shadow-blaze",
@@ -168,29 +169,10 @@ export default function Leaderboard() {
             <MuscleIcon exercise={exercise} className="w-4 h-4 text-blaze-500 shrink-0" />
             <span className="text-sm text-ink-200 font-medium truncate">{exercise}</span>
           </div>
-          <div className="grid grid-cols-4 gap-2 mb-4">
-            {MUSCLE_GROUPS.map((group) => {
-              const active = group.exercises.includes(exercise);
-              return (
-                <button
-                  key={group.name}
-                  type="button"
-                  onClick={() => setPickerMuscle(group.name)}
-                  aria-label={`Elegir ejercicio de ${group.name}`}
-                  className={`flex flex-col items-center gap-1 py-2.5 rounded-xl transition-colors ${
-                    active
-                      ? "bg-blaze-gradient text-white shadow-blaze"
-                      : "bg-ink-800/60 text-ink-400 active:bg-blaze-500/15 active:text-blaze-500"
-                  }`}
-                >
-                  <MuscleIcon muscle={group.name} className="w-4 h-4" />
-                  <span className="text-[9px] font-heading uppercase tracking-wide leading-none">
-                    {group.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <MuscleBodyPicker
+            usedMuscles={new Set(EXERCISE_TO_MUSCLE[exercise] ? [EXERCISE_TO_MUSCLE[exercise]] : [])}
+            onSelectMuscle={setPickerMuscle}
+          />
         </>
       )}
 

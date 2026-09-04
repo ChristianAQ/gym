@@ -9,6 +9,7 @@ import { COMMON_EXERCISES, MUSCLE_GROUPS, EXERCISE_TO_MUSCLE } from "../lib/exer
 import PageTransition from "../components/PageTransition";
 import MuscleIcon from "../components/MuscleIcon";
 import QuickAddSheet from "../components/QuickAddSheet";
+import MuscleBodyPicker from "../components/MuscleBodyPicker";
 
 const CUSTOM = "__custom__";
 
@@ -148,29 +149,7 @@ export default function LogWorkout() {
           </div>
         )}
 
-        <div className="grid grid-cols-4 gap-2">
-          {MUSCLE_GROUPS.map((group) => {
-            const active = usedMuscles.has(group.name);
-            return (
-              <button
-                key={group.name}
-                type="button"
-                onClick={() => setPickerMuscle(group.name)}
-                aria-label={`Añadir ejercicio de ${group.name}`}
-                className={`flex flex-col items-center gap-1 py-2.5 rounded-xl transition-colors ${
-                  active
-                    ? "bg-blaze-gradient text-white shadow-blaze"
-                    : "bg-ink-800/60 text-ink-400 active:bg-blaze-500/15 active:text-blaze-500"
-                }`}
-              >
-                <MuscleIcon muscle={group.name} className="w-4 h-4" />
-                <span className="text-[9px] font-heading uppercase tracking-wide leading-none">
-                  {group.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <MuscleBodyPicker usedMuscles={usedMuscles} onSelectMuscle={setPickerMuscle} />
 
         <AnimatePresence initial={false}>
           {rows.map((row) => (
