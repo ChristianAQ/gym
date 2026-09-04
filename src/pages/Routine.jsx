@@ -308,8 +308,7 @@ export default function Routine() {
         </button>
       </div>
       <p className="text-ink-500 text-sm mb-5">
-        Puedes tener varias rutinas y elegir cuál está activa. La activa es la que rellena el registro de
-        entrenamiento y se muestra en el inicio.
+        Crea y comparte rutinas con tus amigos. No olvides activar tu rutina favorita!
       </p>
 
       {importedMsg && (
