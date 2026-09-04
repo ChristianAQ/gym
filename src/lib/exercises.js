@@ -1,4 +1,13 @@
-import { Shirt, ArrowUp, Zap, Waves, TrendingUp, Hand, Footprints, Triangle } from "../components/icons";
+import {
+  BodyPartSixPackIcon,
+  ShoulderIcon,
+  BicepsFlexedIcon,
+  BackMuscleBodyIcon,
+  BodyPartMuscleIcon,
+  HandGripIcon,
+  BodyPartLegIcon,
+  Dumbbell01Icon,
+} from "@hugeicons/core-free-icons";
 
 // Catálogo de ejercicios organizado por grupo muscular — se usa tanto en el
 // desplegable de la rutina y del registro diario (como <optgroup>, para que
@@ -47,18 +56,19 @@ export const COMMON_EXERCISES = [...new Set(MUSCLE_GROUPS.flatMap((g) => g.exerc
 // Los "grandes" usados para comparar rachas de PRs en el ranking.
 export const KEY_EXERCISES = ["Press banca plano", "Sentadillas", "Peso muerto", "Press Arnold"];
 
-// Un icono por grupo muscular (no hay iconos anatómicos literales en lucide,
-// así que son metáforas visuales consistentes: torso para pecho, huella
-// para pierna, forma triangular para trapecio...).
+// Un icono anatómico por grupo muscular, de @hugeicons/core-free-icons (los
+// datos del icono, no un componente — MuscleIcon.jsx los pinta con
+// HugeiconsIcon). Tríceps no tenía un icono específico dictado, así que usa
+// el mismo "brazo flexionado" que Bíceps pero en su variante propia.
 export const MUSCLE_ICONS = {
-  Pecho: Shirt,
-  Hombro: ArrowUp,
-  Tríceps: Zap,
-  Espalda: Waves,
-  Bíceps: TrendingUp,
-  Antebrazo: Hand,
-  Pierna: Footprints,
-  Trapecio: Triangle,
+  Pecho: BodyPartSixPackIcon,
+  Hombro: ShoulderIcon,
+  Tríceps: BicepsFlexedIcon,
+  Espalda: BackMuscleBodyIcon,
+  Bíceps: BodyPartMuscleIcon,
+  Antebrazo: HandGripIcon,
+  Pierna: BodyPartLegIcon,
+  Trapecio: Dumbbell01Icon,
 };
 
 // Nombre de ejercicio -> grupo muscular. "Pullover" está en dos grupos; aquí

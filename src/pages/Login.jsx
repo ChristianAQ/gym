@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Flame, Mail, Lock, User as UserIcon, Loader2 } from "../components/icons";
+import { Flame, Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import PageTransition from "../components/PageTransition";
 import { asset } from "../lib/asset";

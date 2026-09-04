@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Flame } from "./icons";
+import { Flame } from "lucide-react";
 
 export default function Loader() {
   return (

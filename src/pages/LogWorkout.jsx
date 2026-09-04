@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Trash2, Loader2, PartyPopper, ChevronDown, ClipboardList } from "../components/icons";
+import { X, Trash2, Loader2, PartyPopper, ChevronDown, ClipboardList } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { logWorkout } from "../lib/firestore";
 import { dateKey } from "../lib/date";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Flame, Moon } from "./icons";
+import { ChevronLeft, ChevronRight, Flame, Moon } from "lucide-react";
 import { monthGrid, monthLabel, WEEKDAYS_ES, dateKey } from "../lib/date";
 
 // `restDays` es el mapa de días de descanso de la rutina activa

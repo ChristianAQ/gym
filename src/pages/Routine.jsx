@@ -15,7 +15,7 @@ import {
   Pencil,
   Flame,
   ClipboardList,
-} from "../components/icons";
+} from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   createRoutine,

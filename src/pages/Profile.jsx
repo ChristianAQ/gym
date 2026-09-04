@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Model from "react-body-highlighter";
-import { Copy, Check, UserPlus, LogOut, Dumbbell, CalendarCheck, Pencil, X, Loader2 } from "../components/icons";
+import { Copy, Check, UserPlus, LogOut, Dumbbell, CalendarCheck, Pencil, X, Loader2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { addFriend, updateProfileData } from "../lib/firestore";
 import { updateAuthProfile } from "../firebase";
