@@ -1,6 +1,7 @@
 import { Flame } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { asset } from "../lib/asset";
+import { computeStreakStats } from "../lib/date";
 
 // Barra fija arriba del todo (misma idea que BottomNav pero para el
 // notch/safe-area superior): da identidad de marca constante en todas las
@@ -9,7 +10,7 @@ import { asset } from "../lib/asset";
 // en el padding superior de <main>.
 export default function TopBar() {
   const { profile } = useAuth();
-  const streak = profile?.currentStreak ?? 0;
+  const { currentStreak: streak } = computeStreakStats(profile?.workoutDates, profile?.weeklyGoal);
 
   return (
     <header className="fixed top-0 inset-x-0 z-40 bg-ink-900/95 backdrop-blur border-b border-ink-800 pt-[env(safe-area-inset-top)]">

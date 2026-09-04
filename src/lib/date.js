@@ -13,30 +13,8 @@ export function keyToDate(key) {
   return new Date(y, m - 1, d);
 }
 
-export function daysBetween(keyA, keyB) {
-  const a = keyToDate(keyA);
-  const b = keyToDate(keyB);
-  const ms = b.setHours(0, 0, 0, 0) - a.setHours(0, 0, 0, 0);
-  return Math.round(ms / 86400000);
-}
-
 export function isToday(key) {
   return key === dateKey();
-}
-
-// Devuelve { currentStreak, bestStreak, lastWorkoutDate } tras registrar un
-// entrenamiento en `todayKey`, a partir del estado previo del usuario.
-export function computeStreak({ lastWorkoutDate, currentStreak = 0, bestStreak = 0 }, todayKey) {
-  if (lastWorkoutDate === todayKey) {
-    return { currentStreak, bestStreak, lastWorkoutDate: todayKey };
-  }
-  const gap = lastWorkoutDate ? daysBetween(lastWorkoutDate, todayKey) : null;
-  const next = gap === 1 ? currentStreak + 1 : 1;
-  return {
-    currentStreak: next,
-    bestStreak: Math.max(bestStreak, next),
-    lastWorkoutDate: todayKey,
-  };
 }
 
 const MONTHS_ES = [
@@ -75,6 +53,72 @@ export function startOfWeekKey(date = new Date()) {
 export function countThisWeek(workoutDates) {
   const start = startOfWeekKey();
   return (workoutDates || []).filter((key) => key >= start).length;
+}
+
+// Racha basada en el objetivo semanal: cada semana lunes-domingo que llega
+// al objetivo suma sus días entrenados a la racha; la semana en curso suma
+// lo que lleva hecho sin exigirle todavía el objetivo (aún puede
+// completarlo antes de que acabe). En cuanto una semana YA CERRADA se
+// queda corta, la racha se reinicia desde la siguiente — así una semana a
+// medias que acaba en 3/4 puede enseñar un pico de "racha" más alto
+// mientras está en curso, pero al cerrarse sin llegar al objetivo borra lo
+// acumulado hasta entonces. Sin objetivo semanal se usa una racha diaria
+// clásica (días consecutivos con entrenamiento) como alternativa.
+export function computeStreakStats(workoutDates, weeklyGoal) {
+  const loggedSet = new Set(workoutDates || []);
+  if (loggedSet.size === 0) return { currentStreak: 0, bestStreak: 0 };
+
+  if (!weeklyGoal) return computeDailyStreak(loggedSet);
+
+  const sortedKeys = [...loggedSet].sort();
+  const cursor = keyToDate(startOfWeekKey(keyToDate(sortedKeys[0])));
+  const currentWeekStartKey = startOfWeekKey();
+
+  // `running` es lo acumulado ANTES de la semana que se está mirando. El
+  // pico de esa semana (running + sus días) siempre entra en el cálculo de
+  // `best` — incluida una semana que acaba fallando, porque mientras
+  // todavía estaba en curso sí llegó a enseñar ese pico — pero solo pasa a
+  // ser la base de la siguiente semana si la semana YA CERRADA cumplió el
+  // objetivo. La semana en curso (la última) no se evalúa como cumplida o
+  // fallida todavía: su pico es directamente la racha actual.
+  let running = 0;
+  let best = 0;
+  let cursorKey = dateKey(cursor);
+  while (cursorKey <= currentWeekStartKey) {
+    let count = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(cursor);
+      d.setDate(d.getDate() + i);
+      if (loggedSet.has(dateKey(d))) count++;
+    }
+    const weekPeak = running + count;
+    if (weekPeak > best) best = weekPeak;
+
+    const isCurrentWeek = cursorKey === currentWeekStartKey;
+    running = isCurrentWeek || count >= weeklyGoal ? weekPeak : 0;
+
+    cursor.setDate(cursor.getDate() + 7);
+    cursorKey = dateKey(cursor);
+  }
+
+  return { currentStreak: running, bestStreak: best };
+}
+
+function computeDailyStreak(loggedSet) {
+  const sortedKeys = [...loggedSet].sort();
+  const cursor = keyToDate(sortedKeys[0]);
+  const todayKey = dateKey();
+
+  let running = 0;
+  let best = 0;
+  let cursorKey = dateKey(cursor);
+  while (cursorKey <= todayKey) {
+    running = loggedSet.has(cursorKey) ? running + 1 : 0;
+    if (running > best) best = running;
+    cursor.setDate(cursor.getDate() + 1);
+    cursorKey = dateKey(cursor);
+  }
+  return { currentStreak: running, bestStreak: best };
 }
 
 // Cuadrícula de un mes: array de semanas, cada una con 7 celdas

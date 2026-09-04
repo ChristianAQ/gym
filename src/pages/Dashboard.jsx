@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Dumbbell, X, Moon } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { getWorkoutsByDate, updateWeeklyGoal } from "../lib/firestore";
-import { formatFullDate, isToday, countThisWeek } from "../lib/date";
+import { formatFullDate, isToday, countThisWeek, computeStreakStats } from "../lib/date";
 import { EXERCISE_TO_MUSCLE } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 import Calendar from "../components/Calendar";
@@ -27,9 +27,8 @@ export default function Dashboard() {
   const [selectedDay, setSelectedDay] = useState(null);
   const [goalSheetOpen, setGoalSheetOpen] = useState(false);
 
-  const streak = profile?.currentStreak ?? 0;
-  const best = profile?.bestStreak ?? 0;
   const workoutDates = profile?.workoutDates ?? [];
+  const { currentStreak: streak, bestStreak: best } = computeStreakStats(workoutDates, profile?.weeklyGoal);
   const displayName = profile?.displayName || user?.displayName || "Atleta";
   const photoURL = profile?.photoURL || user?.photoURL;
   const firstName = displayName.split(" ")[0];

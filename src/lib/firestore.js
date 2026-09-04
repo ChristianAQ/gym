@@ -15,7 +15,6 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { computeStreak } from "./date";
 
 export function userRef(uid) {
   return doc(db, "users", uid);
@@ -31,9 +30,6 @@ export async function ensureUserProfile(user) {
     photoURL: user.photoURL || null,
     email: user.email || null,
     createdAt: serverTimestamp(),
-    currentStreak: 0,
-    bestStreak: 0,
-    lastWorkoutDate: null,
     workoutDates: [],
     totalVolume: 0,
     prs: {},
@@ -78,14 +74,14 @@ export function subscribeToUser(uid, callback) {
   return onSnapshot(userRef(uid), (snap) => callback(snap.exists() ? snap.data() : null));
 }
 
-// Registra el entrenamiento de hoy: actualiza racha, PRs y guarda el detalle
-// en la subcolección `workouts`.
+// Registra el entrenamiento de hoy: actualiza PRs y guarda el detalle en la
+// subcolección `workouts`. La racha ya no se guarda aparte — se calcula al
+// vuelo (computeStreakStats) a partir de workoutDates y weeklyGoal cada vez
+// que se muestra, así que basta con añadir la fecha de hoy.
 export async function logWorkout(uid, { dateKey, exercises, note }) {
   const ref = userRef(uid);
   const snap = await getDoc(ref);
   const profile = snap.data() || {};
-
-  const { currentStreak, bestStreak, lastWorkoutDate } = computeStreak(profile, dateKey);
 
   const prs = profile.prs || {};
   let addedVolume = 0;
@@ -101,9 +97,6 @@ export async function logWorkout(uid, { dateKey, exercises, note }) {
   });
 
   const updates = {
-    currentStreak,
-    bestStreak,
-    lastWorkoutDate,
     workoutDates: arrayUnion(dateKey),
     totalVolume: (profile.totalVolume || 0) + addedVolume,
   };

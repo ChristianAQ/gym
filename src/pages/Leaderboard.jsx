@@ -11,9 +11,14 @@ import {
   BarChart3,
   AlertTriangle,
   Check,
+  ClipboardList,
+  Moon,
+  Copy,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { listFriendProfiles } from "../lib/firestore";
+import { listFriendProfiles, importRoutine } from "../lib/firestore";
+import { computeStreakStats, WEEKDAYS_FULL_ES } from "../lib/date";
 import { KEY_EXERCISES, MUSCLE_GROUPS } from "../lib/exercises";
 import PageTransition from "../components/PageTransition";
 import Avatar from "../components/Avatar";
@@ -65,21 +70,38 @@ export default function Leaderboard() {
     load();
   }, [load]);
 
-  const me = useMemo(
-    () => ({
+  const me = useMemo(() => {
+    const workoutDates = profile?.workoutDates ?? [];
+    const weeklyGoal = profile?.weeklyGoal ?? null;
+    const { currentStreak, bestStreak } = computeStreakStats(workoutDates, weeklyGoal);
+    return {
       uid: user?.uid,
       displayName: profile?.displayName || user?.displayName || "Tú",
       photoURL: profile?.photoURL || user?.photoURL,
-      currentStreak: profile?.currentStreak ?? 0,
-      bestStreak: profile?.bestStreak ?? 0,
-      workoutDates: profile?.workoutDates ?? [],
+      currentStreak,
+      bestStreak,
+      workoutDates,
+      weeklyGoal,
       totalVolume: profile?.totalVolume ?? 0,
       prs: profile?.prs ?? {},
-    }),
-    [user, profile]
+      routines: profile?.routines ?? {},
+      activeRoutineId: profile?.activeRoutineId ?? null,
+    };
+  }, [user, profile]);
+
+  // La racha ya no viene guardada en el perfil (se calcula al vuelo desde
+  // workoutDates+weeklyGoal), así que se recalcula igual para cada amigo
+  // con sus propios datos antes de rankear o comparar.
+  const enrichedFriends = useMemo(
+    () =>
+      friends.map((f) => ({
+        ...f,
+        ...computeStreakStats(f.workoutDates, f.weeklyGoal),
+      })),
+    [friends]
   );
 
-  const people = useMemo(() => [me, ...friends], [me, friends]);
+  const people = useMemo(() => [me, ...enrichedFriends], [me, enrichedFriends]);
 
   const ranked = useMemo(() => {
     const rank = (getValue, suffix) =>
@@ -106,11 +128,11 @@ export default function Leaderboard() {
         </button>
       </div>
 
-      {friends.length > 0 && (
+      {enrichedFriends.length > 0 && (
         <div className="mb-5">
           <p className="font-heading uppercase text-xs tracking-wide text-ink-400 mb-2">Tus amigos</p>
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {friends.map((f) => (
+            {enrichedFriends.map((f) => (
               <button
                 key={f.uid}
                 onClick={() => setRival(f)}
@@ -303,6 +325,7 @@ function RecordsPickerSheet({ muscle, selected, onSelect, onClose }) {
 }
 
 function CompareModal({ me, rival, onClose }) {
+  const [showRoutine, setShowRoutine] = useState(false);
   const rows = [
     { label: "Racha actual", meVal: me.currentStreak ?? 0, rivalVal: rival.currentStreak ?? 0, suffix: "días" },
     { label: "Mejor racha", meVal: me.bestStreak ?? 0, rivalVal: rival.bestStreak ?? 0, suffix: "días" },
@@ -360,6 +383,14 @@ function CompareModal({ me, rival, onClose }) {
           </div>
         </div>
 
+        <button
+          type="button"
+          onClick={() => setShowRoutine(true)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 mb-5 rounded-xl bg-ink-800/60 text-blaze-500 font-heading uppercase text-xs tracking-wide active:bg-ink-800"
+        >
+          <ClipboardList className="w-4 h-4" /> Ver rutina de {rival.displayName.split(" ")[0]}
+        </button>
+
         <div className="space-y-3">
           {rows.map((row) => (
             <div key={row.label}>
@@ -387,6 +418,126 @@ function CompareModal({ me, rival, onClose }) {
             </div>
           ))}
         </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {showRoutine && (
+          <FriendRoutineSheet uid={me.uid} rival={rival} onClose={() => setShowRoutine(false)} />
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+// Vista de solo lectura de la rutina activa de un amigo, con un botón para
+// copiarla directamente a las rutinas propias (importRoutine) — a
+// diferencia del flujo de "compartir", aquí no hace falta que el amigo
+// envíe nada: como los perfiles son legibles entre amigos, se puede ver y
+// copiar su rutina activa en cualquier momento.
+function FriendRoutineSheet({ uid, rival, onClose }) {
+  const [copying, setCopying] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const firstName = (rival.displayName || "tu amigo").split(" ")[0];
+  const activeRoutine = rival.activeRoutineId ? rival.routines?.[rival.activeRoutineId] : null;
+
+  async function handleCopy() {
+    setCopying(true);
+    try {
+      await importRoutine(uid, activeRoutine);
+      setCopied(true);
+    } finally {
+      setCopying(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[60] bg-black/70 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-ink-900 border-t border-ink-800 rounded-t-3xl p-6 pb-10 max-h-[85vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <p className="font-heading uppercase tracking-wide truncate pr-3">Rutina de {firstName}</p>
+          <button onClick={onClose} className="p-1.5 text-ink-400 shrink-0">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {!activeRoutine ? (
+          <div className="text-center py-8">
+            <ClipboardList className="w-8 h-8 text-ink-600 mx-auto mb-2" />
+            <p className="text-ink-400 text-sm">{firstName} todavía no tiene una rutina activa.</p>
+          </div>
+        ) : (
+          <>
+            <p className="font-heading text-lg font-semibold mb-3 truncate">{activeRoutine.name}</p>
+            <div className="space-y-2 mb-5">
+              {DAY_ORDER.map((day) => {
+                const exercises = activeRoutine.days?.[day] || [];
+                const isRest = !!activeRoutine.restDays?.[day];
+                return (
+                  <div key={day} className="bg-ink-800/60 rounded-2xl p-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-heading uppercase text-xs tracking-wide">{WEEKDAYS_FULL_ES[day]}</span>
+                      {isRest ? (
+                        <span className="flex items-center gap-1 text-[11px] text-ink-500">
+                          <Moon className="w-3 h-3" /> Descanso
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-ink-500">
+                          {exercises.length} {exercises.length === 1 ? "ejercicio" : "ejercicios"}
+                        </span>
+                      )}
+                    </div>
+                    {!isRest && exercises.length > 0 && (
+                      <div className="space-y-1.5">
+                        {exercises.map((ex, i) => (
+                          <div key={i} className="flex items-center justify-between text-sm">
+                            <span className="flex items-center gap-1.5 text-ink-200 truncate min-w-0">
+                              <MuscleIcon exercise={ex.name} className="w-3.5 h-3.5 text-blaze-500 shrink-0" />
+                              <span className="truncate">{ex.name}</span>
+                            </span>
+                            <span className="text-ink-500 text-xs shrink-0 ml-2">
+                              {ex.sets}×{ex.reps}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopy}
+              disabled={copying || copied}
+              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {copying ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : copied ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+              {copied ? "¡Copiada a tus rutinas!" : "Copiar a mis rutinas"}
+            </button>
+          </>
+        )}
       </motion.div>
     </motion.div>
   );
